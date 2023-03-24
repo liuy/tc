@@ -14,35 +14,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct token {
-    // TODO: Define token structure
-} token_t;
-
-typedef struct ast_node {
-    // TODO: Define AST node structure
-} ast_node_t;
-
-typedef struct symbol_table {
-    // TODO: Define symbol table structure
-} symbol_table_t;
-
-typedef struct code_generator {
-    // TODO: Define code generator structure
-} code_generator_t;
-
-typedef struct optimization_pass {
-    // TODO: Define optimization pass structure
-} optimization_pass_t;
-
-typedef struct debug_info {
-    // TODO: Define debug info structure
-} debug_info_t;
-
-// Lexical Analysis
-token_t* lex(char* source_code) {};
+#include "tc.h"
 
 // Syntax Analysis
-ast_node_t* parse(token_t* tokens) {};
+ast_node_t* parse(struct list_head* tokens) {};
 
 // Semantic Analysis
 void analyze_semantics(ast_node_t* ast, symbol_table_t* symbol_table) {};
@@ -58,7 +33,8 @@ void optimize_code(code_generator_t* code_generator, optimization_pass_t*
 void debug_code(code_generator_t* code_generator, debug_info_t*
 		debug_info) {};
 
-char* read_file(const char* filename) {
+static char* read_file(const char* filename)
+{
     FILE* file = fopen(filename, "r");
     if (!file) {
         fprintf(stderr, "Error: cannot open file %s.\n", filename);
@@ -82,11 +58,13 @@ char* read_file(const char* filename) {
     return buffer;
 }
 
-void close_file(char* source_code) {
+static void close_file(char* source_code)
+{
     free(source_code);
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     // Ensure that an input file has been specified
     if (argc < 2) {
         fprintf(stderr, "Error: no input file specified.\n");
@@ -97,10 +75,10 @@ int main(int argc, char** argv) {
     char* source_code = read_file(argv[1]);
 
     // Perform lexical analysis
-    token_t* tokens = lex(source_code);
+    struct list_head* tokens_list = lex(source_code);
 
     // Perform syntax analysis
-    ast_node_t* ast = parse(tokens);
+    ast_node_t* ast = parse(tokens_list);
 
     // Perform semantic analysis
     symbol_table_t* symbol_table = (symbol_table_t*)
