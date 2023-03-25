@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -Wall -Wextra -std=gnu99 -DTC_DEBUG
 
 all: tc
 

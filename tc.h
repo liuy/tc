@@ -1,6 +1,8 @@
 #ifndef TC_H
 #define TC_H
 
+#include <stdio.h>
+#include <stdarg.h>
 #include "list.h"
 
 typedef struct ast_node {
@@ -62,18 +64,20 @@ enum token_type {
     TOK_KEYWORD_VOID, // void
     TOK_KEYWORD_VOLATILE, // volatile
     TOK_KEYWORD_WHILE, // while
+    TOK_KEYWORD_INLINE, // inline
     TOK_IDENTIFIER, // Identifier
     TOK_CONSTANT_INT, // Integer constant
     TOK_CONSTANT_FLOAT, // Floating-point constant
+    TOK_CONSTANT_LONG, // Long Integer constant
     TOK_CONSTANT_CHAR, // Character constant
     TOK_CONSTANT_STRING, // String constant
-    TOK_OPERATOR_PLUS, // "+"
-    TOK_OPERATOR_MINUS, // "-"
-    TOK_OPERATOR_ASTERISK, // "*"
-    TOK_OPERATOR_SLASH, // "/"
-    TOK_OPERATOR_PERCENT, // "%"
-    TOK_OPERATOR_INCREMENT, // "++"
-    TOK_OPERATOR_DECREMENT, // "--"
+    TOK_OPERATOR_ADD, // "+"
+    TOK_OPERATOR_SUB, // "-"
+    TOK_OPERATOR_MUL, // "*"
+    TOK_OPERATOR_DIV, // "/"
+    TOK_OPERATOR_MOD, // "%"
+    TOK_OPERATOR_INC, // "++"
+    TOK_OPERATOR_DEC, // "--"
     TOK_OPERATOR_ASSIGNMENT, // "="
     TOK_OPERATOR_EQUAL, // "=="
     TOK_OPERATOR_NOT_EQUAL, // "!="
@@ -90,16 +94,19 @@ enum token_type {
     TOK_OPERATOR_BITWISE_NOT, // "~"
     TOK_OPERATOR_LEFT_SHIFT, // "<<"
     TOK_OPERATOR_RIGHT_SHIFT, // ">>"
-    TOK_OPERATOR_PLUS_EQUAL, // "+="
-    TOK_OPERATOR_MINUS_EQUAL, // "-="
-    TOK_OPERATOR_ASTERISK_EQUAL, // "*="
-    TOK_OPERATOR_SLASH_EQUAL, // "/="
-    TOK_OPERATOR_PERCENT_EQUAL, // "%="
-    TOK_OPERATOR_BITWISE_AND_EQUAL, // "&="
-    TOK_OPERATOR_BITWISE_OR_EQUAL, // "|="
-    TOK_OPERATOR_BITWISE_XOR_EQUAL, // "^="
-    TOK_OPERATOR_LEFT_SHIFT_EQUAL, // "<<="
-    TOK_OPERATOR_RIGHT_SHIFT_EQUAL, // ">>="
+    TOK_OPERATOR_ADD_ASSIGN, // "+="
+    TOK_OPERATOR_SUB_ASSIGN, // "-="
+    TOK_OPERATOR_MUL_ASSIGN, // "*="
+    TOK_OPERATOR_DIV_ASSIGN, // "/="
+    TOK_OPERATOR_MOD_ASSIGN, // "%="
+    TOK_OPERATOR_BITWISE_AND_ASSIGN, // "&="
+    TOK_OPERATOR_BITWISE_OR_ASSIGN, // "|="
+    TOK_OPERATOR_BITWISE_XOR_ASSIGN, // "^="
+    TOK_OPERATOR_LEFT_SHIFT_ASSIGN, // "<<="
+    TOK_OPERATOR_RIGHT_SHIFT_ASSIGN, // ">>="
+    TOK_OPERATOR_DOT, // "."
+    TOK_OPERATOR_RANGE, // ".."
+    TOK_OPERATOR_DEREFERENCE, // "->"
     TOK_SEPARATOR_COMMA, // ","
     TOK_SEPARATOR_SEMICOLON, // ";"
     TOK_SEPARATOR_COLON, // ":"
@@ -135,4 +142,24 @@ void optimize_code(code_generator_t* code_generator, optimization_pass_t*
 void debug_code(code_generator_t* code_generator, debug_info_t*
 		debug_info);
 
-#endif
+// Reporting the error and exiting
+#define panic(fmt, ...) \
+    do { \
+        fprintf(stderr, "[PANIC] %s:%d %s(): " fmt, \
+                __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+        exit(EXIT_FAILURE); \
+    } while (0)
+
+
+// Enable it by defining TC_DEBUG in the Makefile
+#ifdef TC_DEBUG
+    #define tc_debug(fmt, ...) \
+    do { \
+        fprintf(stderr, "[DEBUG] %s:%d %s(): " fmt, \
+                __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+    } while (0)
+#else
+    #define tc_debug(fmt, ...)
+#endif // TC_DEBUG
+
+#endif /* TC_H */

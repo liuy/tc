@@ -96,21 +96,27 @@ static inline int list_empty(const struct list_head *head)
 }
 
 // Get the struct for this entry
-#define list_entry(ptr, type, member) \\
+#define list_entry(ptr, type, member) \
     container_of(ptr, type, member)
 
 // Get the struct for this entry
-#define container_of(ptr, type, member) ({ \\
-    const typeof(((type *)0)->member) *__mptr = (ptr); \\
+#define container_of(ptr, type, member) ({ \
+    const typeof(((type *)0)->member) *__mptr = (ptr); \
     (type *)((char *)__mptr - offsetof(type, member)); })
 
 // Iterate over a list
-#define list_for_each(pos, head) \\
+#define list_for_each(pos, head) \
     for (pos = (head)->node.next; pos != &(head->node); pos = pos->next)
 
 // Iterate over a list safe against removal of list entry
-#define list_for_each_safe(pos, n, head) \\
-    for (pos = (head)->node.next, n = pos->next; pos != &(head->node); \\
+#define list_for_each_safe(pos, n, head) \
+    for (pos = (head)->node.next, n = pos->next; pos != &(head->node); \
             pos = n, n = pos->next)
+
+// Iterate over list of given type
+#define list_for_each_entry(pos, head, member) \
+    for (pos = list_entry((head)->node.next, typeof(*pos), member); \
+         &pos->member != &(head)->node; \
+         pos = list_entry(pos->member.next, typeof(*pos), member))
 
 #endif /* LIST_H */
