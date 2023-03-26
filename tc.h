@@ -153,13 +153,15 @@ void debug_code(code_generator_t* code_generator, debug_info_t*
 
 // Enable it by defining TC_DEBUG in the Makefile
 #ifdef TC_DEBUG
-    #define tc_debug(fmt, ...) \
+    #define tc_debug(level, fmt, ...) \
     do { \
-        fprintf(stderr, "[DEBUG] %s:%d %s(): " fmt, \
-                __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+        if (level >= TC_DEBUG) { \
+            fprintf(stderr, "[DEBUG] %s:%d %s(): " fmt, \
+                    __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+        } \
     } while (0)
 #else
-    #define tc_debug(fmt, ...)
-#endif // TC_DEBUG
+    #define tc_debug(level, fmt, ...) do {} while (0)
+#endif /* TC_DEBUG */
 
 #endif /* TC_H */

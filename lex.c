@@ -42,6 +42,7 @@ static size_t parse_separator(token_t* token, char* current_char)
             break;
     }
     token->lexeme = strndup(current_char, 1);
+    tc_debug(0, "%s\n", token->lexeme);
     return 1;
 }
 
@@ -161,12 +162,13 @@ static size_t parse_operator(token_t* token, char* current_char)
             }
             break;
         // TODO: add more operators
+            panic("Not implemented");
         default:
             break;
     }
     current_char++;
     token->lexeme = strndup(start, current_char - start);
-    tc_debug("%s", token->lexeme);
+    tc_debug(0, "%s", token->lexeme);
 
     return current_char - start;
 }
@@ -207,7 +209,7 @@ static size_t parse_string_or_char(token_t* token, char* current_char)
 }
 
 // Parse a number and return the length of the number
-// TODO: Handle octal and hexadecimal numbers
+// TODO: Handle binary, octal and hexadecimal numbers
 static size_t parse_number(token_t* token, char* current_char)
 {
     char* start = current_char;
@@ -235,7 +237,7 @@ static size_t parse_number(token_t* token, char* current_char)
         token->type = TOK_CONSTANT_INT;
     }
     token->lexeme = strndup(start, current_char - start);
-    tc_debug("%s\n", token->lexeme);
+    tc_debug(0, "%s\n", token->lexeme);
 
     return current_char - start;
 }
@@ -249,7 +251,7 @@ static size_t parse_keyword_or_id(token_t* token, char* current_char)
         len++;
     }
     char* str = strndup(current_char, len);
-    tc_debug("%s\n", str);
+    tc_debug(0, "%s\n", str);
 
     if (!strcmp(str, "auto")) {
         token->type = TOK_KEYWORD_AUTO;
@@ -332,7 +334,7 @@ struct list_head* lex(char* source_code)
 
     char* current_char = source_code;
 
-    tc_debug("%s\n", source_code);
+    tc_debug(0, "\n%s\n", source_code);
     while (*current_char != '\0') {
         // Skip whitespace
         if (isspace(*current_char)) {
@@ -410,14 +412,13 @@ struct list_head* lex(char* source_code)
             continue;
         }
 
-        panic("Unknown character: [%d]%c\n", *current_char, *current_char);
+        panic("Unknown character: [%c:%d]\n", *current_char, *current_char);
     }
 
     #ifdef TC_DEBUG
     token_t *t;
-    printf("Tokens are:\n");
     list_for_each_entry(t, tokens_list, list) {
-        printf("[%s:%d]\n", t->lexeme, t->type);
+        tc_debug(1, "[%s:%d]\n", t->lexeme, t->type);
     }
     #endif
 
