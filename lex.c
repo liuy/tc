@@ -168,7 +168,7 @@ static size_t parse_operator(token_t* token, char* current_char)
     }
     current_char++;
     token->lexeme = strndup(start, current_char - start);
-    tc_debug(0, "%s", token->lexeme);
+    tc_debug(0, "%s\n", token->lexeme);
 
     return current_char - start;
 }
