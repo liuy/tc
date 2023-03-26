@@ -119,4 +119,21 @@ static inline int list_empty(const struct list_head *head)
          &pos->member != &(head)->node; \
          pos = list_entry(pos->member.next, typeof(*pos), member))
 
+// Get the size of a list
+#define list_size(head) ({ \
+    size_t count = 0; \
+    struct list_node *pos; \
+    list_for_each(pos, head) { \
+        count++; \
+    } \
+    count; \
+})
+
+// Get the first entry of list and remove it from the list
+#define list_entry_grab(head, type, member) ({ \
+    type *first_entry = list_entry((head)->node.next, type, member); \
+    list_del(&(first_entry->member)); \
+    first_entry; \
+})
+
 #endif /* LIST_H */

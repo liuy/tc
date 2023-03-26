@@ -161,9 +161,60 @@ static size_t parse_operator(token_t* token, char* current_char)
                 token->type = TOK_OPERATOR_DOT;
             }
             break;
-        // TODO: add more operators
-            panic("Not implemented");
+        case '^':
+            if (*(current_char + 1) == '=') {
+                // ^= operator
+                token->type = TOK_OPERATOR_BITWISE_XOR_ASSIGN;
+                current_char++;
+            } else {
+                token->type = TOK_OPERATOR_BITWISE_XOR;
+            }
+            break;
+        case '~':
+            token->type = TOK_OPERATOR_BITWISE_NOT;
+            break;
+        case '<':
+            if (*(current_char + 1) == '<') {
+                if (*(current_char + 2) == '=') {
+                    // <<= operator
+                    token->type = TOK_OPERATOR_LEFT_SHIFT_ASSIGN;
+                    current_char += 2;
+                } else {
+                    // << operator
+                    token->type = TOK_OPERATOR_LEFT_SHIFT;
+                    current_char++;
+                }
+            } else if (*(current_char + 1) == '=') {
+                // <= operator
+                token->type = TOK_OPERATOR_LESS_THAN_OR_EQUAL_TO;
+                current_char++;
+            } else {
+                // < operator
+                token->type = TOK_OPERATOR_LESS_THAN;
+            }
+            break;
+        case '>':
+            if (*(current_char + 1) == '>') {
+                if (*(current_char + 2) == '=') {
+                    // >>= operator
+                    token->type = TOK_OPERATOR_RIGHT_SHIFT_ASSIGN;
+                    current_char += 2;
+                } else {
+                    // >> operator
+                    token->type = TOK_OPERATOR_RIGHT_SHIFT;
+                    current_char++;
+                }
+            } else if (*(current_char + 1) == '=') {
+                // >= operator
+                token->type = TOK_OPERATOR_GREATER_THAN_OR_EQUAL_TO;
+                current_char++;
+            } else {
+                // > operator
+                token->type = TOK_OPERATOR_GREATER_THAN;
+            }
+            break;
         default:
+            panic("Not implemented");
             break;
     }
     current_char++;
