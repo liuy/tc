@@ -3,6 +3,12 @@
 #include "../tc.h"
 #include "../list.h"
 
+static void token_free(token_t *tok)
+{
+    free(tok->lexeme);
+    free(tok);
+}
+
 START_TEST(test_lex_numbers)
 {
     char *input = "123 123456789l 123.456";
@@ -15,12 +21,15 @@ START_TEST(test_lex_numbers)
     token_t* tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_INT);
     ck_assert_str_eq(tok->lexeme, "123");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_LONG);
     ck_assert_str_eq(tok->lexeme, "123456789l");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_FLOAT);
     ck_assert_str_eq(tok->lexeme, "123.456");
+    token_free(tok);
 }
 END_TEST
 
@@ -34,8 +43,8 @@ START_TEST(test_lex_keywords)
     //ck_assert_ptr_nonnull(tokens);
     ck_assert_int_eq(list_size(tokens), 32);
 
-    token_t *tok;
-    list_for_each_entry(tok, tokens, list) {
+    token_t *tok, *next;
+    list_for_each_entry_safe(tok, next, tokens, list) {
         if (tok->type == TOK_KEYWORD_AUTO) {
             ck_assert_str_eq(tok->lexeme, "auto");
         } else if (tok->type == TOK_KEYWORD_BREAK) {
@@ -101,6 +110,8 @@ START_TEST(test_lex_keywords)
         } else if (tok->type == TOK_KEYWORD_WHILE) {
             ck_assert_str_eq(tok->lexeme, "while");
         }
+	list_del(&tok->list);
+	token_free(tok);
     }
 }
 END_TEST
@@ -113,8 +124,8 @@ START_TEST(test_lex_operators)
     //ck_assert_ptr_nonnull(tokens);
     ck_assert_int_eq(list_size(tokens), 32);
 
-    token_t *tok;
-    list_for_each_entry(tok, tokens, list) {
+    token_t *tok, *next;
+    list_for_each_entry_safe(tok, next, tokens, list) {
         if (tok->type == TOK_OPERATOR_ADD) {
             ck_assert_str_eq(tok->lexeme, "+");
         } else if (tok->type == TOK_OPERATOR_SUB) {
@@ -178,6 +189,8 @@ START_TEST(test_lex_operators)
         } else if (tok->type == TOK_OPERATOR_RIGHT_SHIFT_ASSIGN) {
             ck_assert_str_eq(tok->lexeme, ">>=");
         }
+	list_del(&tok->list);
+	token_free(tok);
     }
 }
 END_TEST
@@ -191,53 +204,66 @@ START_TEST(test_lex_strings_and_chars)
     token_t *tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_STRING);
     ck_assert_str_eq(tok->lexeme, "\"Hello, world!\n\"");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_STRING);
     ck_assert_str_eq(tok->lexeme, "\"ChatGPT\"");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_CHAR);
     ck_assert_str_eq(tok->lexeme, "'c'");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_CHAR);
     ck_assert_str_eq(tok->lexeme, "'\n'");
+    token_free(tok);
 }
 END_TEST
 
 
 START_TEST(test_lex_whitespaces_and_comments)
 {
-    // TODO: Implement test case for C whitespaces and comments as input string
-    char *input = "/* This is a comment */ int main()\n {\n \treturn 0;\n } // Another comment";
+    char *input = "/* This is a comment */ int main()\n {\n \treturn 0;\n } \
+		   // Another comment";
     struct list_head* tokens = lex(input);
     ck_assert_int_eq(list_size(tokens), 9);
 
     token_t *tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_KEYWORD_INT);
     ck_assert_str_eq(tok->lexeme, "int");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_IDENTIFIER);
     ck_assert_str_eq(tok->lexeme, "main");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_SEPARATOR_LEFT_PARENTHESIS);
     ck_assert_str_eq(tok->lexeme, "(");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_SEPARATOR_RIGHT_PARENTHESIS);
     ck_assert_str_eq(tok->lexeme, ")");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_SEPARATOR_LEFT_BRACE);
     ck_assert_str_eq(tok->lexeme, "{");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_KEYWORD_RETURN);
     ck_assert_str_eq(tok->lexeme, "return");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_INT);
     ck_assert_str_eq(tok->lexeme, "0");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_SEPARATOR_SEMICOLON);
     ck_assert_str_eq(tok->lexeme, ";");
+    token_free(tok);
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_SEPARATOR_RIGHT_BRACE);
     ck_assert_str_eq(tok->lexeme, "}");
+    token_free(tok);
 }
 END_TEST
 
@@ -247,7 +273,7 @@ Suite *lex_suite(void)
     TCase *tc_numbers, *tc_keywords, *tc_operators, *tc_strings_and_chars,
           *tc_whitespaces_and_comments;
 
-    s = suite_create("Lex");
+    s = suite_create("Lexical Analysis Tests");
 
     tc_numbers = tcase_create("Numbers");
     tcase_add_test(tc_numbers, test_lex_numbers);
