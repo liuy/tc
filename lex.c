@@ -8,7 +8,7 @@
 #include "list.h"
 
 // Parse separator and reutrn the length of the separator
-static size_t parse_separator(token_t* token, char* current_char)
+static size_t parse_separator(token_t *token, char *current_char)
 {
     switch (*current_char) {
         case ',':
@@ -47,7 +47,7 @@ static size_t parse_separator(token_t* token, char* current_char)
 }
 
 // Parse operator and reutrn the length of the operator
-static size_t parse_operator(token_t* token, char* current_char)
+static size_t parse_operator(token_t *token, char *current_char)
 {
     char *start = current_char;
     switch (*current_char) {
@@ -225,9 +225,9 @@ static size_t parse_operator(token_t* token, char* current_char)
 }
 
 // Parse string or character literal and reutrn the length of the literal
-static size_t parse_string_or_char(token_t* token, char* current_char)
+static size_t parse_string_or_char(token_t *token, char *current_char)
 {
-    char* start = current_char;
+    char *start = current_char;
 
    if (*current_char == '\"') {
        // String literal (e.g. "Hello, world!")
@@ -261,9 +261,9 @@ static size_t parse_string_or_char(token_t* token, char* current_char)
 
 // Parse a number and return the length of the number
 // TODO: Handle binary, octal and hexadecimal numbers
-static size_t parse_number(token_t* token, char* current_char)
+static size_t parse_number(token_t *token, char *current_char)
 {
-    char* start = current_char;
+    char *start = current_char;
 
     // Parse the integer part of the number
     while (isdigit(*current_char)) {
@@ -295,13 +295,13 @@ static size_t parse_number(token_t* token, char* current_char)
 
 // Parse a keyword or identifier and return the length of the keyword or identifier
 // TODO: Use a hash table to speed up the lookup
-static size_t parse_keyword_or_id(token_t* token, char* current_char)
+static size_t parse_keyword_or_id(token_t *token, char *current_char)
 {
     size_t len = 1;
     while (isalnum(*(current_char + len)) || *(current_char + len) == '_') {
         len++;
     }
-    char* str = strndup(current_char, len);
+    char *str = strndup(current_char, len);
     tc_debug(0, "%s\n", str);
 
     if (!strcmp(str, "auto")) {
@@ -378,12 +378,12 @@ static size_t parse_keyword_or_id(token_t* token, char* current_char)
 }
 
 // Lexical analysis of source code and return a list of tokens
-struct list_head* lex(char* source_code)
+struct list_head *lex(char *source_code)
 {
-    struct list_head* tokens_list = malloc(sizeof(struct list_head));
+    struct list_head *tokens_list = malloc(sizeof(struct list_head));
     INIT_LIST_HEAD(tokens_list);
 
-    char* current_char = source_code;
+    char *current_char = source_code;
 
     tc_debug(0, "\n%s\n", source_code);
     while (*current_char != '\0') {
@@ -418,7 +418,7 @@ struct list_head* lex(char* source_code)
 
         // Parse identifiers and keywords
         if (isalpha(*current_char) || *current_char == '_') {
-            token_t* token = malloc(sizeof(token_t));
+            token_t *token = malloc(sizeof(token_t));
             current_char += parse_keyword_or_id(token, current_char);
             list_add_tail(&token->list, tokens_list);
             continue;
@@ -426,7 +426,7 @@ struct list_head* lex(char* source_code)
 
         // Parse numbers
         if (isdigit(*current_char)) {
-            token_t* token = malloc(sizeof(token_t));
+            token_t *token = malloc(sizeof(token_t));
             current_char += parse_number(token, current_char);
             list_add_tail(&token->list, tokens_list);
             continue;
@@ -435,7 +435,7 @@ struct list_head* lex(char* source_code)
 
         // Parse strings and characters
         if (*current_char == '\"' || *current_char == '\'') {
-            token_t* token = malloc(sizeof(token_t));
+            token_t *token = malloc(sizeof(token_t));
             current_char += parse_string_or_char(token, current_char);
             list_add_tail(&token->list, tokens_list);
             continue;
@@ -447,7 +447,7 @@ struct list_head* lex(char* source_code)
             *current_char == '&' || *current_char == '|' || *current_char == '^' ||
             *current_char == '~' || *current_char == '<' || *current_char == '>' ||
             *current_char == '=' || *current_char == '.') {
-            token_t* token = malloc(sizeof(token_t));
+            token_t *token = malloc(sizeof(token_t));
             current_char += parse_operator(token, current_char);
             list_add_tail(&token->list, tokens_list);
             continue;
@@ -457,7 +457,7 @@ struct list_head* lex(char* source_code)
         if (*current_char == ',' || *current_char == ';' || *current_char == ':' ||
             *current_char == '(' || *current_char == ')' || *current_char == '[' ||
             *current_char == ']' || *current_char == '{' || *current_char == '}') {
-            token_t* token = malloc(sizeof(token_t));
+            token_t *token = malloc(sizeof(token_t));
             current_char += parse_separator(token, current_char);
             list_add_tail(&token->list, tokens_list);
             continue;

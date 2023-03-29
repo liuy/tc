@@ -14,11 +14,11 @@ START_TEST(test_lex_numbers)
     char *input = "123 123456789l 123.456";
     //TODO: add 0x123 0b1010 0.123e-10 0.123e+10 0.123e10
 
-    struct list_head* tokens = lex(input);
+    struct list_head *tokens = lex(input);
     //ck_assert_ptr_nonnull(tokens); supported since 0.11.0
     ck_assert_int_eq(list_size(tokens), 3);
 
-    token_t* tok = list_entry_grab(tokens, token_t, list);
+    token_t *tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_INT);
     ck_assert_str_eq(tok->lexeme, "123");
     token_free(tok);
@@ -39,7 +39,7 @@ START_TEST(test_lex_keywords)
                    enum extern float for goto if int long register return short \
                    signed sizeof static struct switch typedef union unsigned \
                    void volatile while";
-    struct list_head* tokens = lex(input);
+    struct list_head *tokens = lex(input);
     //ck_assert_ptr_nonnull(tokens);
     ck_assert_int_eq(list_size(tokens), 32);
 
@@ -118,9 +118,9 @@ END_TEST
 
 START_TEST(test_lex_operators)
 {
-    char *input = "+ - * / % ++ -- == != > < >= <= && || ! & | ^ ~ << >> += -= \
+    char *input = "+ -  */ % ++ -- == != > < >= <= && || ! & | ^ ~ << >> += -= \
                    *= /= %= &= |= ^= <<= >>=";
-    struct list_head* tokens = lex(input);
+    struct list_head *tokens = lex(input);
     //ck_assert_ptr_nonnull(tokens);
     ck_assert_int_eq(list_size(tokens), 32);
 
@@ -198,7 +198,7 @@ END_TEST
 START_TEST(test_lex_strings_and_chars)
 {
     char *input = "\"Hello, world!\n\" \"ChatGPT\" 'c' '\n'";
-    struct list_head* tokens = lex(input);
+    struct list_head *tokens = lex(input);
     ck_assert_int_eq(list_size(tokens), 4);
 
     token_t *tok = list_entry_grab(tokens, token_t, list);
@@ -223,9 +223,9 @@ END_TEST
 
 START_TEST(test_lex_whitespaces_and_comments)
 {
-    char *input = "/* This is a comment */ int main()\n {\n \treturn 0;\n } \
+    char *input = "/ *This is a comment */ int main()\n {\n \treturn 0;\n } \
 		   // Another comment";
-    struct list_head* tokens = lex(input);
+    struct list_head *tokens = lex(input);
     ck_assert_int_eq(list_size(tokens), 9);
 
     token_t *tok = list_entry_grab(tokens, token_t, list);

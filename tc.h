@@ -27,7 +27,7 @@ typedef struct debug_info {
 
 typedef struct token {
     struct list_node list;
-    char* lexeme;
+    char *lexeme;
     int type;
 } token_t;
 
@@ -123,23 +123,23 @@ enum token_type {
 };
 
 // Lexical Analysis
-struct list_head* lex(char* source_code);
+struct list_head *lex(char *source_code);
 
 // Syntax Analysis
-ast_node_t* parse(struct list_head* tokens);
+ast_node_t *parse(struct list_head *tokens);
 
 // Semantic Analysis
-void analyze_semantics(ast_node_t* ast, symbol_table_t* symbol_table);
+void analyze_semantics(ast_node_t *ast, symbol_table_t *symbol_table);
 
 // Code Generation
-void generate_code(ast_node_t* ast, code_generator_t* code_generator);
+void generate_code(ast_node_t *ast, code_generator_t *code_generator);
 
 // Optimization
-void optimize_code(code_generator_t* code_generator, optimization_pass_t*
+void optimize_code(code_generator_t *code_generator, optimization_pass_t*
 		   optimization_pass);
 
 // Debugging
-void debug_code(code_generator_t* code_generator, debug_info_t*
+void debug_code(code_generator_t *code_generator, debug_info_t*
 		debug_info);
 
 // Reporting the error and exiting
