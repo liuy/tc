@@ -118,7 +118,7 @@ END_TEST
 
 START_TEST(test_lex_operators)
 {
-    char *input = "+ -  */ % ++ -- == != > < >= <= && || ! & | ^ ~ << >> += -= \
+    char *input = "+ - * / % ++ -- == != > < >= <= && || ! & | ^ ~ << >> += -= \
                    *= /= %= &= |= ^= <<= >>=";
     struct list_head *tokens = lex(input);
     //ck_assert_ptr_nonnull(tokens);
@@ -223,7 +223,7 @@ END_TEST
 
 START_TEST(test_lex_whitespaces_and_comments)
 {
-    char *input = "/ *This is a comment */ int main()\n {\n \treturn 0;\n } \
+    char *input = "/* This is a comment */ int main()\n {\n \treturn 0;\n } \
 		   // Another comment";
     struct list_head *tokens = lex(input);
     ck_assert_int_eq(list_size(tokens), 9);

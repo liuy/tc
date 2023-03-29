@@ -25,12 +25,6 @@ typedef struct debug_info {
     // TODO: Define debug info structure
 } debug_info_t;
 
-typedef struct token {
-    struct list_node list;
-    char *lexeme;
-    int type;
-} token_t;
-
 enum token_type {
     TOK_KEYWORD_AUTO, // auto
     TOK_KEYWORD_BREAK, // break
@@ -122,8 +116,49 @@ enum token_type {
     TOK_EOF	// EOF TOKEN
 };
 
-// Lexical Analysis
+typedef struct token {
+    struct list_node list;
+    char *lexeme;
+    enum token_type type;
+} token_t;
+
+
+// Lexical Analysis and helpers in lex.c
 struct list_head *lex(char *source_code);
+const char *token_type_to_str(enum token_type type);
+
+static inline const char *token_to_str(token_t *token)
+{
+    return token_type_to_str(token->type);
+}
+
+static inline int is_keyword(token_t *token)
+{
+    return token->type >= TOK_KEYWORD_AUTO &&
+           token->type <= TOK_KEYWORD_WHILE;
+}
+
+static inline int is_operator(token_t *token)
+{
+    return token->type >= TOK_OPERATOR_ADD &&
+           token->type <= TOK_OPERATOR_RIGHT_SHIFT_ASSIGN;
+}
+
+static inline int is_constant(token_t *token)
+{
+    return token->type >= TOK_CONSTANT_INT &&
+           token->type <= TOK_CONSTANT_STRING;
+}
+static inline int is_separator(token_t *token)
+{
+    return token->type >= TOK_SEPARATOR_COMMA &&
+           token->type <= TOK_SEPARATOR_RIGHT_BRACE;
+}
+
+static inline int token_is(token_t *token, const char *str)
+{
+    return strcmp(token->lexeme, str) == 0;
+}
 
 // Syntax Analysis
 ast_node_t *parse(struct list_head *tokens);
