@@ -16,7 +16,7 @@ START_TEST(test_lex_numbers)
 
     struct list_head *tokens = lex(input);
     //ck_assert_ptr_nonnull(tokens); supported since 0.11.0
-    ck_assert_int_eq(list_size(tokens), 3);
+    ck_assert_int_eq(list_size(tokens), 4);
 
     token_t *tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_INT);
@@ -30,6 +30,9 @@ START_TEST(test_lex_numbers)
     ck_assert_int_eq(tok->type, TOK_CONSTANT_FLOAT);
     ck_assert_str_eq(tok->lexeme, "123.456");
     token_free(tok);
+    tok = list_entry_grab(tokens, token_t, list);
+    ck_assert_int_eq(tok->type, TOK_EOF);
+    token_free(tok);
 }
 END_TEST
 
@@ -41,7 +44,7 @@ START_TEST(test_lex_keywords)
                    void volatile while";
     struct list_head *tokens = lex(input);
     //ck_assert_ptr_nonnull(tokens);
-    ck_assert_int_eq(list_size(tokens), 32);
+    ck_assert_int_eq(list_size(tokens), 33);
 
     token_t *tok, *next;
     list_for_each_entry_safe(tok, next, tokens, list) {
@@ -122,7 +125,7 @@ START_TEST(test_lex_operators)
                    *= /= %= &= |= ^= <<= >>=";
     struct list_head *tokens = lex(input);
     //ck_assert_ptr_nonnull(tokens);
-    ck_assert_int_eq(list_size(tokens), 32);
+    ck_assert_int_eq(list_size(tokens), 33);
 
     token_t *tok, *next;
     list_for_each_entry_safe(tok, next, tokens, list) {
@@ -199,7 +202,7 @@ START_TEST(test_lex_strings_and_chars)
 {
     char *input = "\"Hello, world!\n\" \"ChatGPT\" 'c' '\n'";
     struct list_head *tokens = lex(input);
-    ck_assert_int_eq(list_size(tokens), 4);
+    ck_assert_int_eq(list_size(tokens), 5);
 
     token_t *tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_CONSTANT_STRING);
@@ -217,6 +220,9 @@ START_TEST(test_lex_strings_and_chars)
     ck_assert_int_eq(tok->type, TOK_CONSTANT_CHAR);
     ck_assert_str_eq(tok->lexeme, "'\n'");
     token_free(tok);
+    tok = list_entry_grab(tokens, token_t, list);
+    ck_assert_int_eq(tok->type, TOK_EOF);
+    token_free(tok);
 }
 END_TEST
 
@@ -226,7 +232,7 @@ START_TEST(test_lex_whitespaces_and_comments)
     char *input = "/* This is a comment */ int main()\n {\n \treturn 0;\n } \
 		   // Another comment";
     struct list_head *tokens = lex(input);
-    ck_assert_int_eq(list_size(tokens), 9);
+    ck_assert_int_eq(list_size(tokens), 10);
 
     token_t *tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_KEYWORD_INT);
@@ -263,6 +269,9 @@ START_TEST(test_lex_whitespaces_and_comments)
     tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_SEPARATOR_RIGHT_BRACE);
     ck_assert_str_eq(tok->lexeme, "}");
+    token_free(tok);
+    tok = list_entry_grab(tokens, token_t, list);
+    ck_assert_int_eq(tok->type, TOK_EOF);
     token_free(tok);
 }
 END_TEST

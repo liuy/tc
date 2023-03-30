@@ -468,7 +468,7 @@ struct list_head *lex(char *source_code)
 
     token_t *token = malloc(sizeof(token_t));
     token->type = TOK_EOF;
-    token->lexeme = "EOF";
+    token->lexeme = NULL;
     list_add_tail(&token->list, tokens_list);
 
     #ifdef TC_DEBUG

@@ -13,7 +13,7 @@
  * declarator = identifier [ "[" num "]" ] ;
  * type-specifier = "int" | "float" | "char" | "void" ;
  * compound-stmt = "{" { declaration | statement } "}" ;
- * statement = exprGession-stmt | compound-stmt | if-stmt | while-stmt | return-stmt ;
+ * statement = expression-stmt | compound-stmt | if-stmt | while-stmt | return-stmt ;
  * expression-stmt = [ expression ] ";" ;
  * if-stmt = "if" "(" expression ")" statement [ "else" statement ] ;
  * while-stmt = "while" "(" expression ")" statement ;
