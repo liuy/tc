@@ -143,4 +143,12 @@ static inline int list_empty(const struct list_head *head)
 	 &pos->member != &(head)->node; \
 	 pos = n, n = list_entry(n->member.next, typeof(*n), member))
 
+// Get the first entry of list
+#define list_first_entry(head, type, member) \
+    list_entry((head)->node.next, type, member)
+
+// Get the next entry of list
+#define list_next_entry(pos, member) \
+    list_entry((pos)->member.next, typeof(*(pos)), member)
+
 #endif /* LIST_H */

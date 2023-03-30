@@ -13,17 +13,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <getopt.h>
 
 #include "tc.h"
 
-// Syntax Analysis
-ast_node_t *parse(struct list_head *tokens) {};
-
 // Semantic Analysis
-void analyze_semantics(ast_node_t *ast, symbol_table_t *symbol_table) {};
+void analyze_semantics(cast_node_t *ast, symbol_table_t *symbol_table) {};
 
 // Code Generation
-void generate_code(ast_node_t *ast, code_generator_t *code_generator) {};
+void generate_code(cast_node_t *ast, code_generator_t *code_generator) {};
 
 // Optimization
 void optimize_code(code_generator_t *code_generator, optimization_pass_t*
@@ -65,20 +63,35 @@ static void close_file(char *source_code)
 
 int main(int argc, char **argv)
 {
-    // Ensure that an input file has been specified
-    if (argc < 2) {
-        fprintf(stderr, "Error: no input file specified.\n");
-        exit(1);
+    char *source_code = NULL;
+    int opt;
+
+    // Parse command line options
+    while ((opt = getopt(argc, argv, "s:")) != -1) {
+        switch (opt) {
+        case 's':
+            source_code = optarg;
+            break;
+        default:
+            panic("Usage: %s [-s source_code] [input_file]\n", argv[0]);
+        }
     }
 
+    // Ensure that an input file or source code has been specified
+    if (optind >= argc && !source_code)
+        // optind >= argc means no input file
+        panic("Error: no input file specified.\n");
+
     // Read the input file
-    char *source_code = read_file(argv[1]);
+    if (!source_code) {
+        source_code = read_file(argv[optind]);
+    }
 
     // Perform lexical analysis
     struct list_head *tokens_list = lex(source_code);
 
     // Perform syntax analysis
-    ast_node_t *ast = parse(tokens_list);
+    cast_node_t *ast = parse(tokens_list);
 
     // Perform semantic analysis
     symbol_table_t *symbol_table = (symbol_table_t*)
@@ -100,8 +113,9 @@ int main(int argc, char **argv)
     debug_code(code_generator, debug_info);
 
     // Close the input file
-    close_file(source_code);
-
+    if (!source_code) {
+        close_file(source_code);
+    }
     // Free memory
     // free(tokens);
     // free(ast);

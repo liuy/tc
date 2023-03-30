@@ -3,11 +3,9 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 #include "list.h"
-
-typedef struct ast_node {
-    // TODO: Define AST node structure
-} ast_node_t;
 
 typedef struct symbol_table {
     // TODO: Define symbol table structure
@@ -122,6 +120,127 @@ typedef struct token {
     enum token_type type;
 } token_t;
 
+enum cast_node_type {
+    CAST_PROGRAM,
+    CAST_DECLARATION,
+    CAST_VAR_DECLARATION,
+    CAST_TYPE_SPECIFIER,
+    CAST_VAR_DECLARATOR_LIST,
+    CAST_VAR_DECLARATOR,
+    CAST_FUNCTION_DECLARATION,
+    CAST_PARAMS,
+    CAST_PARAM,
+    CAST_DECLARATOR,
+    CAST_COMPOUND_STMT,
+    CAST_STATEMENT,
+    CAST_EXPRESSION_STMT,
+    CAST_IF_STMT,
+    CAST_WHILE_STMT,
+    CAST_RETURN_STMT,
+    CAST_EXPRESSION,
+    CAST_ASSIGN_EXPRESSION,
+    CAST_EQUALITY_EXPRESSION,
+    CAST_RELATIONAL_EXPRESSION,
+    CAST_ADDITIVE_EXPRESSION,
+    CAST_TERM,
+    CAST_FACTOR,
+    CAST_IDENTIFIER,
+    CAST_NUM
+};
+
+// C Abstract Syntax Tree (CAST) node
+typedef struct cast_node {
+    struct list_node list;
+    enum cast_node_type type;
+    int line_number;
+    union {
+        struct {
+            //struct cast_node **declarations;
+            struct list_head declarations;
+        } program;
+        struct {
+            struct cast_node *specifier;
+            struct cast_node *declarator;
+        } declaration;
+        struct {
+            struct cast_node *type_specifier;
+            struct cast_node *var_declarator_list;
+        } var_declaration;
+        struct {
+            enum token_type type;
+        } type_specifier;
+        struct {
+            struct list_head var_declarators;
+        } var_declarator_list;
+        struct {
+            char *identifier;
+            struct cast_node *num;
+        } var_declarator;
+        struct {
+            struct cast_node *type_specifier;
+            char *identifier;
+            struct cast_node *params;
+            struct cast_node *compound_stmt;
+        } function_declaration;
+        struct {
+            struct cast_node **params;
+            int num_params;
+        } params;
+        struct {
+            struct cast_node *type_specifier;
+            struct cast_node *declarator;
+        } param;
+        struct {
+            char *identifier;
+            struct cast_node *num;
+        } declarator;
+        struct {
+            struct cast_node **statements;
+            int num_statements;
+        } compound_stmt;
+        struct {
+            struct cast_node *expression;
+        } expression_stmt;
+        struct {
+            struct cast_node *expression;
+            struct cast_node *if_statement;
+            struct cast_node *else_statement;
+        } if_stmt;
+        struct {
+            struct cast_node *expression;
+            struct cast_node *statement;
+        } while_stmt;
+        struct {
+            struct cast_node *expression;
+        } return_stmt;
+        struct {
+            struct cast_node *equality_expression;
+            struct cast_node *assign_expression;
+        } assign_expression;
+        struct {
+            struct cast_node **equality_expressions;
+            int num_equality_expressions;
+        } equality_expression;
+        struct {
+            struct cast_node **relational_expressions;
+            int num_relational_expressions;
+        } relational_expression;
+        struct {
+            struct cast_node **additive_expressions;
+            int num_additive_expressions;
+        } additive_expression;
+        struct {
+            struct cast_node **terms;
+            int num_terms;
+        } term;
+        struct {
+            char *identifier;
+        } factor;
+        struct {
+            int value;
+        } num;
+    };
+} cast_node_t;
 
 // Lexical Analysis and helpers in lex.c
 struct list_head *lex(char *source_code);
@@ -161,13 +280,13 @@ static inline int token_is(token_t *token, const char *str)
 }
 
 // Syntax Analysis
-ast_node_t *parse(struct list_head *tokens);
+cast_node_t *parse(struct list_head *tokens);
 
 // Semantic Analysis
-void analyze_semantics(ast_node_t *ast, symbol_table_t *symbol_table);
+void analyze_semantics(cast_node_t *ast, symbol_table_t *symbol_table);
 
 // Code Generation
-void generate_code(ast_node_t *ast, code_generator_t *code_generator);
+void generate_code(cast_node_t *ast, code_generator_t *code_generator);
 
 // Optimization
 void optimize_code(code_generator_t *code_generator, optimization_pass_t*
@@ -185,6 +304,9 @@ void debug_code(code_generator_t *code_generator, debug_info_t*
         exit(EXIT_FAILURE); \
     } while (0)
 
+#define not_implemented() \
+    panic("Not implemented function %s\n", __func__)
+
 
 // Enable it by defining TC_DEBUG in the Makefile
 #ifdef TC_DEBUG
@@ -198,5 +320,14 @@ void debug_code(code_generator_t *code_generator, debug_info_t*
 #else
     #define tc_debug(level, fmt, ...) do {} while (0)
 #endif /* TC_DEBUG */
+
+#define zalloc(size) ({ \
+    void *ptr = malloc(size); \
+    if (!ptr) { \
+        panic("Out of memory\n"); \
+    } \
+    memset(ptr, 0, size); \
+    ptr; \
+})
 
 #endif /* TC_H */
