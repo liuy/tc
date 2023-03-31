@@ -127,21 +127,21 @@ enum cast_node_type {
     CAST_TYPE_SPECIFIER,
     CAST_VAR_DECLARATOR_LIST,
     CAST_VAR_DECLARATOR,
-    CAST_FUNCTION_DECLARATION,
-    CAST_PARAMS,
+    CAST_FUN_DECLARATION,
+    CAST_PARAM_LIST,
     CAST_PARAM,
-    CAST_DECLARATOR,
+    CAST_PARAM_DECLARATOR,
     CAST_COMPOUND_STMT,
-    CAST_STATEMENT,
-    CAST_EXPRESSION_STMT,
+    CAST_STMT,
+    CAST_EXPR_STMT,
     CAST_IF_STMT,
     CAST_WHILE_STMT,
     CAST_RETURN_STMT,
-    CAST_EXPRESSION,
-    CAST_ASSIGN_EXPRESSION,
-    CAST_EQUALITY_EXPRESSION,
-    CAST_RELATIONAL_EXPRESSION,
-    CAST_ADDITIVE_EXPRESSION,
+    CAST_EXPR,
+    CAST_ASSIGN_EXPR,
+    CAST_EQUALITY_EXPR,
+    CAST_RELATIONAL_EXPR,
+    CAST_ADDITIVE_EXPR,
     CAST_TERM,
     CAST_FACTOR,
     CAST_IDENTIFIER,
@@ -155,7 +155,6 @@ typedef struct cast_node {
     int line_number;
     union {
         struct {
-            //struct cast_node **declarations;
             struct list_head declarations;
         } program;
         struct {
@@ -179,62 +178,58 @@ typedef struct cast_node {
         struct {
             struct cast_node *type_specifier;
             char *identifier;
-            struct cast_node *params;
+            struct cast_node *param_list;
             struct cast_node *compound_stmt;
-        } function_declaration;
+        } fun_declaration;
         struct {
-            struct cast_node **params;
-            int num_params;
-        } params;
+            struct list_head params;
+        } param_list;
         struct {
             struct cast_node *type_specifier;
-            struct cast_node *declarator;
+            struct cast_node *param_declarator;
         } param;
         struct {
             char *identifier;
             struct cast_node *num;
-        } declarator;
+        } param_declarator;
         struct {
-            struct cast_node **statements;
-            int num_statements;
+            struct list_head stmt_list;
         } compound_stmt;
         struct {
-            struct cast_node *expression;
-        } expression_stmt;
+            struct cast_node *expr;
+        } expr_stmt;
         struct {
-            struct cast_node *expression;
-            struct cast_node *if_statement;
-            struct cast_node *else_statement;
+            struct cast_node *expr;
+            struct cast_node *if_stmt;
+            struct cast_node *else_stmt;
         } if_stmt;
         struct {
-            struct cast_node *expression;
-            struct cast_node *statement;
+            struct cast_node *expr;
+            struct cast_node *stmt;
         } while_stmt;
         struct {
-            struct cast_node *expression;
+            struct cast_node *expr;
         } return_stmt;
         struct {
-            struct cast_node *equality_expression;
-            struct cast_node *assign_expression;
-        } assign_expression;
+            struct cast_node *equality_expr;
+            struct cast_node *assign_expr;
+        } assign_expr;
         struct {
-            struct cast_node **equality_expressions;
-            int num_equality_expressions;
-        } equality_expression;
+            struct list_head equality_exprs;
+        } equality_expr;
         struct {
-            struct cast_node **relational_expressions;
-            int num_relational_expressions;
-        } relational_expression;
+            struct list_head relational_exprs;
+        } relational_expr;
         struct {
-            struct cast_node **additive_expressions;
-            int num_additive_expressions;
-        } additive_expression;
+            struct list_head additive_exprs;
+        } additive_expr;
         struct {
-            struct cast_node **terms;
-            int num_terms;
+            struct list_head terms;
         } term;
         struct {
             char *identifier;
+            struct cast_node *num;
+            struct cast_node *expr;
         } factor;
         struct {
             int value;

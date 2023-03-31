@@ -56,15 +56,10 @@ static char *read_file(const char *filename)
     return buffer;
 }
 
-static void close_file(char *source_code)
-{
-    free(source_code);
-}
-
 int main(int argc, char **argv)
 {
     char *source_code = NULL;
-    int opt;
+    int opt, need_free = 0;
 
     // Parse command line options
     while ((opt = getopt(argc, argv, "s:")) != -1) {
@@ -85,6 +80,7 @@ int main(int argc, char **argv)
     // Read the input file
     if (!source_code) {
         source_code = read_file(argv[optind]);
+	need_free = 1;
     }
 
     // Perform lexical analysis
@@ -113,9 +109,8 @@ int main(int argc, char **argv)
     debug_code(code_generator, debug_info);
 
     // Close the input file
-    if (!source_code) {
-        close_file(source_code);
-    }
+    if (need_free)
+	free(source_code);
     // Free memory
     // free(tokens);
     // free(ast);
