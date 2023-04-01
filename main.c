@@ -18,7 +18,7 @@
 #include "tc.h"
 
 // Semantic Analysis
-void analyze_semantics(cast_node_t *ast, symbol_table_t *symbol_table) {};
+symbol_table_t *analyze_semantics(cast_node_t *ast) {};
 
 // Code Generation
 void generate_code(cast_node_t *ast, code_generator_t *code_generator) {};
@@ -90,9 +90,7 @@ int main(int argc, char **argv)
     cast_node_t *ast = parse(tokens_list);
 
     // Perform semantic analysis
-    symbol_table_t *symbol_table = (symbol_table_t*)
-	    malloc(sizeof(symbol_table_t));
-    analyze_semantics(ast, symbol_table);
+    symbol_table_t *symbol_table = analyze_semantics(ast);
 
     // Generate code
     code_generator_t *code_generator =

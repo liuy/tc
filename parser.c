@@ -201,6 +201,7 @@ static cast_node_t *parse_factor(void)
 {
     cast_node_t *n = zalloc(sizeof(cast_node_t));
 
+    n->type = CAST_FACTOR;
     if (current_tok->type == TOK_CONSTANT_INT) {
         n->factor.num = parse_num();
     } else if (current_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS) {
@@ -393,13 +394,13 @@ static cast_node_t *parse_compound_stmt(void)
     eat_current_tok(); // eat '{'
     INIT_LIST_HEAD(&n->compound_stmt.stmt_list);
     while (current_tok->type != TOK_SEPARATOR_RIGHT_BRACE) {
-        cast_node_t *n;
+        cast_node_t *node;
 
         if (is_type_specifier(current_tok))
-            n = parse_var_declaration();
+            node = parse_var_declaration();
         else
-            n = parse_stmt();
-        list_add_tail(&n->list, &n->compound_stmt.stmt_list);
+            node = parse_stmt();
+        list_add_tail(&node->list, &n->compound_stmt.stmt_list);
     }
     eat_current_tok(); // eat '}'
     return n;

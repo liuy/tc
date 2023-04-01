@@ -474,7 +474,7 @@ struct list_head *lex(char *source_code)
     #ifdef TC_DEBUG
     token_t *t;
     list_for_each_entry(t, tokens_list, list) {
-        tc_debug(1, "[%s: %s]\n", token_type_to_str(t->type), t->lexeme);
+        tc_debug(1, "[%s]\n", token_type_to_str(t->type));
     }
     #endif
 
@@ -485,40 +485,72 @@ const char *token_type_to_str(enum token_type type)
 {
     switch(type) {
         case TOK_KEYWORD_AUTO:
+            return "KEYWORD auto";
         case TOK_KEYWORD_BREAK:
+            return "KEYWORD break";
         case TOK_KEYWORD_CASE:
+            return "KEYWORD case";
         case TOK_KEYWORD_CHAR:
+            return "KEYWORD char";
         case TOK_KEYWORD_CONST:
+            return "KEYWORD const";
         case TOK_KEYWORD_CONTINUE:
+            return "KEYWORD continue";
         case TOK_KEYWORD_DEFAULT:
+            return "KEYWORD default";
         case TOK_KEYWORD_DO:
+            return "KEYWORD do";
         case TOK_KEYWORD_DOUBLE:
+            return "KEYWORD double";
         case TOK_KEYWORD_ELSE:
+            return "KEYWORD else";
         case TOK_KEYWORD_ENUM:
+            return "KEYWORD enum";
         case TOK_KEYWORD_EXTERN:
+            return "KEYWORD extern";
         case TOK_KEYWORD_FLOAT:
+            return "KEYWORD float";
         case TOK_KEYWORD_FOR:
+            return "KEYWORD for";
         case TOK_KEYWORD_GOTO:
+            return "KEYWORD goto";
         case TOK_KEYWORD_IF:
+            return "KEYWORD if";
         case TOK_KEYWORD_INT:
+            return "KEYWORD int";
         case TOK_KEYWORD_LONG:
+            return "KEYWORD long";
         case TOK_KEYWORD_REGISTER:
+            return "KEYWORD register";
         case TOK_KEYWORD_RETURN:
+            return "KEYWORD return";
         case TOK_KEYWORD_SHORT:
+            return "KEYWORD short";
         case TOK_KEYWORD_SIGNED:
+            return "KEYWORD signed";
         case TOK_KEYWORD_SIZEOF:
+            return "KEYWORD sizeof";
         case TOK_KEYWORD_STATIC:
+            return "KEYWORD static";
         case TOK_KEYWORD_STRUCT:
+            return "KEYWORD struct";
         case TOK_KEYWORD_SWITCH:
+            return "KEYWORD switch";
         case TOK_KEYWORD_TYPEDEF:
+            return "KEYWORD typedef";
         case TOK_KEYWORD_UNION:
+            return "KEYWORD union";
         case TOK_KEYWORD_UNSIGNED:
+            return "KEYWORD unsigned";
         case TOK_KEYWORD_VOID:
+            return "KEYWORD void";
         case TOK_KEYWORD_VOLATILE:
+            return "KEYWORD volatile";
         case TOK_KEYWORD_WHILE:
+            return "KEYWORD while";
         case TOK_KEYWORD_INLINE:
-            return "Keyword";
-	case TOK_IDENTIFIER:
+            return "KEYWORD inline";
+        case TOK_IDENTIFIER:
             return "Identifier";
         case TOK_CONSTANT_INT:
             return "Integer constant";
@@ -531,52 +563,95 @@ const char *token_type_to_str(enum token_type type)
         case TOK_CONSTANT_STRING:
             return "String constant";
         case TOK_OPERATOR_ADD:
+            return "OPERATOR '+'";
         case TOK_OPERATOR_SUB:
+            return "OPERATOR '-'";
         case TOK_OPERATOR_MUL:
+            return "OPERATOR '*'";
         case TOK_OPERATOR_DIV:
+            return "OPERATOR '/'";
         case TOK_OPERATOR_MOD:
+            return "OPERATOR '%'";
         case TOK_OPERATOR_INC:
+            return "OPERATOR '++'";
         case TOK_OPERATOR_DEC:
+            return "OPERATOR '--'";
         case TOK_OPERATOR_ASSIGNMENT:
+            return "OPERATOR '='";
         case TOK_OPERATOR_EQUAL:
+            return "OPERATOR '=='";
         case TOK_OPERATOR_NOT_EQUAL:
+            return "OPERATOR '!='";
         case TOK_OPERATOR_LESS_THAN:
+            return "OPERATOR '<'";
         case TOK_OPERATOR_GREATER_THAN:
+            return "OPERATOR '>'";
         case TOK_OPERATOR_LESS_THAN_OR_EQUAL_TO:
+            return "OPERATOR '<='";
         case TOK_OPERATOR_GREATER_THAN_OR_EQUAL_TO:
+            return "OPERATOR '>='";
         case TOK_OPERATOR_LOGICAL_AND:
+            return "OPERATOR '&&'";
         case TOK_OPERATOR_LOGICAL_OR:
+            return "OPERATOR '||'";
         case TOK_OPERATOR_LOGICAL_NOT:
+            return "OPERATOR '!'";
         case TOK_OPERATOR_BITWISE_AND:
+            return "OPERATOR '&'";
         case TOK_OPERATOR_BITWISE_OR:
+            return "OPERATOR '|'";
         case TOK_OPERATOR_BITWISE_XOR:
+            return "OPERATOR '^'";
         case TOK_OPERATOR_BITWISE_NOT:
+            return "OPERATOR '~'";
         case TOK_OPERATOR_LEFT_SHIFT:
+            return "OPERATOR '<<'";
         case TOK_OPERATOR_RIGHT_SHIFT:
+            return "OPERATOR '>>'";
         case TOK_OPERATOR_ADD_ASSIGN:
+            return "OPERATOR '+='";
         case TOK_OPERATOR_SUB_ASSIGN:
+            return "OPERATOR '-='";
         case TOK_OPERATOR_MUL_ASSIGN:
+            return "OPERATOR '*='";
         case TOK_OPERATOR_DIV_ASSIGN:
+            return "OPERATOR '/='";
         case TOK_OPERATOR_MOD_ASSIGN:
+            return "OPERATOR '%='";
         case TOK_OPERATOR_BITWISE_AND_ASSIGN:
+            return "OPERATOR '&='";
         case TOK_OPERATOR_BITWISE_OR_ASSIGN:
+            return "OPERATOR '|='";
         case TOK_OPERATOR_BITWISE_XOR_ASSIGN:
+            return "OPERATOR '^='";
         case TOK_OPERATOR_LEFT_SHIFT_ASSIGN:
+            return "OPERATOR '<<='";
         case TOK_OPERATOR_RIGHT_SHIFT_ASSIGN:
+            return "OPERATOR '>>='";
         case TOK_OPERATOR_DOT:
+            return "OPERATOR '.'";
         case TOK_OPERATOR_RANGE:
+            return "OPERATOR '..'";
         case TOK_OPERATOR_DEREFERENCE:
-             return "Operator";
+            return "OPERATOR '->'";
         case TOK_SEPARATOR_COMMA:
+            return "SEPARATOR ','";
         case TOK_SEPARATOR_SEMICOLON:
+            return "SEPARATOR ';'";
         case TOK_SEPARATOR_COLON:
+            return "SEPARATOR ':'";
         case TOK_SEPARATOR_LEFT_PARENTHESIS:
+            return "SEPARATOR '('";
         case TOK_SEPARATOR_RIGHT_PARENTHESIS:
+            return "SEPARATOR ')'";
         case TOK_SEPARATOR_LEFT_BRACKET:
+            return "SEPARATOR '['";
         case TOK_SEPARATOR_RIGHT_BRACKET:
+            return "SEPARATOR ']'";
         case TOK_SEPARATOR_LEFT_BRACE:
+            return "SEPARATOR '{'";
         case TOK_SEPARATOR_RIGHT_BRACE:
-            return "Separator";
+            return "SEPARATOR '}'";
         case TOK_EOF:
             return "EOF";
         default:

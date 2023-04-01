@@ -157,10 +157,10 @@ typedef struct cast_node {
         struct {
             struct list_head declarations;
         } program;
-        struct {
-            struct cast_node *specifier;
-            struct cast_node *declarator;
-        } declaration;
+//        struct {
+//            struct cast_node *specifier;
+//            struct cast_node *declarator;
+//        } declaration;
         struct {
             struct cast_node *type_specifier;
             struct cast_node *var_declarator_list;
@@ -278,7 +278,7 @@ static inline int token_is(token_t *token, const char *str)
 cast_node_t *parse(struct list_head *tokens);
 
 // Semantic Analysis
-void analyze_semantics(cast_node_t *ast, symbol_table_t *symbol_table);
+symbol_table_t *analyze_semantics(cast_node_t *ast);
 
 // Code Generation
 void generate_code(cast_node_t *ast, code_generator_t *code_generator);

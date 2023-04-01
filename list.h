@@ -106,7 +106,7 @@ static inline int list_empty(const struct list_head *head)
 
 // Iterate over a list
 #define list_for_each(pos, head) \
-    for (pos = (head)->node.next; pos != &(head->node); pos = pos->next)
+    for (pos = (head)->node.next; pos != &((head)->node); pos = pos->next)
 
 // Iterate over a list safe against removal of list entry
 #define list_for_each_safe(pos, n, head) \
