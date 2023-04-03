@@ -7,10 +7,6 @@
 #include <string.h>
 #include "list.h"
 
-typedef struct symbol_table {
-    // TODO: Define symbol table structure
-} symbol_table_t;
-
 typedef struct code_generator {
     // TODO: Define code generator structure
 } code_generator_t;
@@ -111,6 +107,7 @@ enum token_type {
     TOK_COMMENT_SINGLE_LINE, // Single-line comment
     TOK_COMMENT_MULTIPLE_LINE, // Multi-line comment
     TOK_ERROR, // ERROR TOKEN
+    TOK_NULL, // NULL TOKEN
     TOK_EOF	// EOF TOKEN
 };
 
@@ -133,15 +130,13 @@ enum cast_node_type {
     CAST_PARAM_DECLARATOR,
     CAST_COMPOUND_STMT,
     CAST_STMT,
-    CAST_EXPR_STMT,
+    CAST_ASSIGN_STMT,
     CAST_IF_STMT,
     CAST_WHILE_STMT,
     CAST_RETURN_STMT,
     CAST_EXPR,
-    CAST_ASSIGN_EXPR,
     CAST_EQUALITY_EXPR,
-    CAST_RELATIONAL_EXPR,
-    CAST_ADDITIVE_EXPR,
+    CAST_SIMPLE_EXPR,
     CAST_TERM,
     CAST_FACTOR,
     CAST_IDENTIFIER,
@@ -193,11 +188,12 @@ typedef struct cast_node {
             struct cast_node *num;
         } param_declarator;
         struct {
-            struct list_head stmt_list;
+            struct list_head stmts;
         } compound_stmt;
         struct {
+            char *identifier;
             struct cast_node *expr;
-        } expr_stmt;
+        } assign_stmt;
         struct {
             struct cast_node *expr;
             struct cast_node *if_stmt;
@@ -211,22 +207,24 @@ typedef struct cast_node {
             struct cast_node *expr;
         } return_stmt;
         struct {
-            struct cast_node *equality_expr;
-            struct cast_node *assign_expr;
-        } assign_expr;
+            struct cast_node *left;
+            enum token_type op;
+            struct cast_node *right;
+        } expr;
         struct {
-            struct list_head equality_exprs;
+            struct cast_node *left;
+            enum token_type op;
+            struct cast_node *right;
         } equality_expr;
         struct {
-            struct list_head relational_exprs;
-        } relational_expr;
-        struct {
-            struct list_head additive_exprs;
-        } additive_expr;
-        struct {
             struct list_head terms;
+        } simple_expr;
+        struct {
+            enum token_type op;
+            struct list_head factors;
         } term;
         struct {
+            enum token_type op;
             char *identifier;
             struct cast_node *num;
             struct cast_node *expr;
@@ -278,6 +276,28 @@ static inline int token_is(token_t *token, const char *str)
 cast_node_t *parse(struct list_head *tokens);
 
 // Semantic Analysis
+typedef struct symbol {
+    struct hlist_node list;
+    char *name;
+    enum token_type type;
+} symbol_t;
+
+/*
+ * Scopes are implemented as linked lists of symbol tables.
+ * There is one gobal scope and local scope per function.
+ */
+typedef struct symbol_table {
+#define TABLE_SIZE 1024
+    struct hlist_head table[TABLE_SIZE];
+    struct symbol_table *parent;
+    char *name;
+} symbol_table_t;
+
+static inline int symbol_table_hash(char *str)
+{
+    return fnv1_hash(str) % TABLE_SIZE;
+}
+
 symbol_table_t *analyze_semantics(cast_node_t *ast);
 
 // Code Generation

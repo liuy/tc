@@ -3,6 +3,10 @@
 
 #include <stddef.h>
 
+#define __LOCAL(var, line) __ ## var ## line
+#define _LOCAL(var, line) __LOCAL(var, line)
+#define LOCAL(var) _LOCAL(var, __LINE__)
+
 struct list_node {
     struct list_node *prev, *next;
 };
@@ -150,5 +154,128 @@ static inline int list_empty(const struct list_head *head)
 // Get the next entry of list
 #define list_next_entry(pos, member) \
     list_entry((pos)->member.next, typeof(*(pos)), member)
+
+/* hlist, mostly useful for hash tables */
+
+// This is djb2 hash function from http://www.cse.yorku.ca/~oz/hash.html
+static inline unsigned long djb2_hash(char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+
+    return hash;
+}
+
+// FNV-1 hash function from http://www.isthe.com/chongo/tech/comp/fnv/
+static inline unsigned long fnv1_hash(char *str)
+{
+    unsigned long hash = 2166136261;
+    for (int i = 0; str[i] != '\0'; i++) {
+        hash = hash ^ str[i];
+        hash = hash * 16777619;
+    }
+    return hash;
+}
+
+struct hlist_head {
+	struct hlist_node *first;
+};
+
+struct hlist_node {
+	struct hlist_node *next, **pprev;
+};
+
+#define LIST_POISON1 ((struct hlist_node *) 0x00100100)
+#define LIST_POISON2 ((struct hlist_node **) 0x00200200)
+
+#define HLIST_HEAD_INIT { .first = NULL }
+#define HLIST_HEAD(name) struct hlist_head name = {  .first = NULL }
+#define INIT_HLIST_HEAD(ptr) ((ptr)->first = NULL)
+static inline void INIT_HLIST_NODE(struct hlist_node *h)
+{
+	h->next = NULL;
+	h->pprev = NULL;
+}
+
+static inline int hlist_unhashed(const struct hlist_node *h)
+{
+	return !h->pprev;
+}
+
+static inline int hlist_empty(const struct hlist_head *h)
+{
+	return !h->first;
+}
+
+static inline void __hlist_del(struct hlist_node *n)
+{
+	struct hlist_node *next = n->next;
+	struct hlist_node **pprev = n->pprev;
+	*pprev = next;
+	if (next)
+		next->pprev = pprev;
+}
+
+static inline void hlist_del(struct hlist_node *n)
+{
+	__hlist_del(n);
+	n->next = LIST_POISON1;
+	n->pprev = LIST_POISON2;
+}
+
+static inline void hlist_add_head(struct hlist_node *n, struct hlist_head *h)
+{
+	struct hlist_node *first = h->first;
+	n->next = first;
+	if (first)
+		first->pprev = &n->next;
+	h->first = n;
+	n->pprev = &h->first;
+}
+
+/* next must be != NULL */
+static inline void hlist_add_before(struct hlist_node *n,
+		struct hlist_node *next)
+{
+	n->pprev = next->pprev;
+	n->next = next;
+	next->pprev = &n->next;
+	*(n->pprev) = n;
+}
+
+static inline void hlist_add_after(struct hlist_node *n,
+		struct hlist_node *next)
+{
+	next->next = n->next;
+	n->next = next;
+	next->pprev = &n->next;
+
+	if (next->next)
+		next->next->pprev  = &next->next;
+}
+
+#define hlist_entry(ptr, type, member) container_of(ptr, type, member)
+
+#define hlist_for_each(pos, head)					\
+	for (typeof(pos) LOCAL(n) = (pos = (head)->first, NULL);	\
+	     pos && (LOCAL(n) = pos->next, 1);				\
+	     pos = LOCAL(n))						\
+
+/*
+ * hlist_for_each_entry - iterate over list of given type
+ * @tpos:       the type * to use as a loop cursor.
+ * @pos:        the &struct hlist_node to use as a loop cursor.
+ * @head:       the head for your list.
+ * @member:     the name of the hlist_node within the struct.
+ */
+#define hlist_for_each_entry(tpos, pos, head, member)			\
+	for (typeof(pos) LOCAL(n) = (pos = (head)->first, NULL);	\
+	     pos && (LOCAL(n) = pos->next, 1) &&			\
+		     (tpos = hlist_entry(pos, typeof(*tpos), member), 1); \
+	     pos = LOCAL(n))
 
 #endif /* LIST_H */

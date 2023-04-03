@@ -17,9 +17,6 @@
 
 #include "tc.h"
 
-// Semantic Analysis
-symbol_table_t *analyze_semantics(cast_node_t *ast) {};
-
 // Code Generation
 void generate_code(cast_node_t *ast, code_generator_t *code_generator) {};
 
