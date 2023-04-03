@@ -135,7 +135,7 @@ enum cast_node_type {
     CAST_WHILE_STMT,
     CAST_RETURN_STMT,
     CAST_EXPR,
-    CAST_EQUALITY_EXPR,
+    CAST_RELATIONAL_EXPR,
     CAST_SIMPLE_EXPR,
     CAST_TERM,
     CAST_FACTOR,
@@ -207,24 +207,23 @@ typedef struct cast_node {
             struct cast_node *expr;
         } return_stmt;
         struct {
-            struct cast_node *left;
-            enum token_type op;
-            struct cast_node *right;
+            struct list_head relationals;
         } expr;
         struct {
+            enum token_type op; // op for expr
             struct cast_node *left;
-            enum token_type op;
             struct cast_node *right;
-        } equality_expr;
+        } relational_expr;
         struct {
+            enum token_type op; // op for relational_expr
             struct list_head terms;
         } simple_expr;
         struct {
-            enum token_type op;
+            enum token_type op; // op for simple_expr
             struct list_head factors;
         } term;
         struct {
-            enum token_type op;
+            enum token_type op; // op for term
             char *identifier;
             struct cast_node *num;
             struct cast_node *expr;

@@ -18,8 +18,8 @@
  * if-stmt = "if" "(" expression ")" statement [ "else" statement ] ;
  * while-stmt = "while" "(" expression ")" statement ;
  * return-stmt = "return" [ expression ] ";" ;
- * expression = equality-expression [ ("==" | "!=") equality-expression ] ;
- * equality-expression = simple-expression [ ("<" | "<= " | ">" | ">=") simple-expression ] ;
+ * expression = relational-expression { ("||" | "&&") relational-expression } ;
+ * relational-expression = simple-expression [ ("<" | "<= " | ">" | ">=" | "!=" | "==") simple-expression ] ;
  * simple-expression = term { ("+" | "-") term } ;
  * term = factor { ("*" | "/") factor } ;
  * factor = identifier | num | "(" expression ")" ;
@@ -271,38 +271,48 @@ static cast_node_t *parse_simple_expression(void)
     return n;
 }
 
-// equality_expr = simple_expr [ ("<" | "<=" | ">" | ">=") simple_expr ]
-static cast_node_t *parse_equality_expression(void)
+// relational_expr = simple_expr [ ("<" | "<=" | ">" | ">=" | "==" | "!=") simple_expr ]
+static cast_node_t *parse_relational_expression(void)
 {
     cast_node_t *n = zalloc(sizeof(cast_node_t));
+    cast_node_t *s;
 
-    n->type = CAST_EQUALITY_EXPR;
-    n->equality_expr.op = TOK_NULL;
-    n->equality_expr.left = parse_simple_expression();
+    n->type = CAST_RELATIONAL_EXPR;
+    s = parse_simple_expression();
+    s->simple_expr.op = TOK_NULL;
+    n->relational_expr.left = s;
     if (current_tok->type == TOK_OPERATOR_LESS_THAN ||
         current_tok->type == TOK_OPERATOR_LESS_THAN_OR_EQUAL_TO ||
         current_tok->type == TOK_OPERATOR_GREATER_THAN ||
-        current_tok->type == TOK_OPERATOR_GREATER_THAN_OR_EQUAL_TO) {
-        n->equality_expr.op = current_tok->type;
-        eat_current_tok(); // eat "<", "<=", ">", ">="
-        n->equality_expr.right = parse_simple_expression();
+        current_tok->type == TOK_OPERATOR_GREATER_THAN_OR_EQUAL_TO ||
+        current_tok->type == TOK_OPERATOR_EQUAL ||
+        current_tok->type == TOK_OPERATOR_NOT_EQUAL) {
+        s->simple_expr.op = current_tok->type;
+        eat_current_tok(); // eat "<", "<=", ">", ">=", "==", or "!="
+        n->relational_expr.right = parse_simple_expression();
     }
     return n;
 }
 
-// expr = equality_expr [ ("==" | "!=") equality_expr ]
+
+// expr = relational_expr { ("&&" | "||") relational_expr }
 static cast_node_t *parse_expr(void)
 {
     cast_node_t *n = zalloc(sizeof(cast_node_t));
-
+    cast_node_t *rel;;
     n->type = CAST_EXPR;
-    n->expr.op = TOK_NULL;
-    n->expr.left = parse_equality_expression();
-    if (current_tok->type == TOK_OPERATOR_EQUAL || current_tok->type == TOK_OPERATOR_NOT_EQUAL) {
-        n->expr.op = current_tok->type;
-        eat_current_tok(); // eat "==" or "!="
-        n->expr.right = parse_equality_expression();
+    INIT_LIST_HEAD(&n->expr.relationals);
+    rel = parse_relational_expression();
+    rel->relational_expr.op = TOK_NULL;
+    list_add_tail(&rel->list, &n->expr.relationals);
+    while (current_tok->type == TOK_OPERATOR_LOGICAL_AND ||
+           current_tok->type == TOK_OPERATOR_LOGICAL_OR) {
+        rel->relational_expr.op = current_tok->type;
+        eat_current_tok(); // eat "&&" or "||"
+        rel = parse_relational_expression();
+        list_add_tail(&rel->list, &n->expr.relationals);
     }
+
     return n;
 }
 

@@ -198,13 +198,16 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             traverse_cast(node->if_stmt.if_stmt, symtab);
             traverse_cast(node->if_stmt.else_stmt, symtab);
             break;
-        case CAST_EXPR:
-            traverse_cast(node->expr.left, symtab);
-            traverse_cast(node->expr.right, symtab);
+        case CAST_EXPR: {
+            cast_node_t *relational_expr;
+            list_for_each_entry(relational_expr, &node->expr.relationals, list) {
+                traverse_cast(relational_expr, symtab);
+            }
             break;
-        case CAST_EQUALITY_EXPR:
-            traverse_cast(node->equality_expr.left, symtab);
-            traverse_cast(node->equality_expr.right, symtab);
+            }
+        case CAST_RELATIONAL_EXPR:
+            traverse_cast(node->relational_expr.left, symtab);
+            traverse_cast(node->relational_expr.right, symtab);
             break;
         case CAST_SIMPLE_EXPR: {
             cast_node_t *term;
