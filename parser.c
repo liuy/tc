@@ -138,8 +138,6 @@ static cast_node_t *parse_var_declaration(void)
     if (current_tok->type != TOK_SEPARATOR_SEMICOLON)
         panic("';' expected, but got %s\n", current_tok->lexeme);
     eat_current_tok(); // eat ";"
-    while (current_tok->type == TOK_SEPARATOR_SEMICOLON)
-        eat_current_tok(); // eat extra ";" if it exists
     return n;
 }
 
@@ -389,7 +387,7 @@ static cast_node_t *parse_if_stmt(void)
 // stmt = if_stmt | compound_stmt | return_stmt | while_stmt | assign_stmt
 static cast_node_t *parse_stmt(void)
 {
-    cast_node_t *n = zalloc(sizeof(cast_node_t));
+    cast_node_t *n;
 
     if (current_tok->type == TOK_KEYWORD_IF) {
         n = parse_if_stmt();
@@ -402,8 +400,6 @@ static cast_node_t *parse_stmt(void)
     } else {
         n = parse_assign_stmt();
     }
-    while (current_tok->type == TOK_SEPARATOR_SEMICOLON)
-        eat_current_tok(); // eat extra ";" if it exists
     return n;
 }
 
@@ -419,6 +415,12 @@ static cast_node_t *parse_compound_stmt(void)
     INIT_LIST_HEAD(&n->compound_stmt.stmts);
     while (current_tok->type != TOK_SEPARATOR_RIGHT_BRACE) {
         cast_node_t *node;
+
+        while (current_tok->type == TOK_SEPARATOR_SEMICOLON)
+            eat_current_tok(); // eat extra ";" if it exists
+
+        if (current_tok->type == TOK_SEPARATOR_RIGHT_BRACE)
+            break;// "{ ; }" is valid
 
         if (current_tok->type == TOK_EOF)
             panic("'}' expected, but got EOF\n");
@@ -482,9 +484,14 @@ static cast_node_t *parse_program(void)
     p->type = CAST_PROGRAM;
     INIT_LIST_HEAD(&p->program.declarations);
     while (current_tok->type != TOK_EOF) {
+        while (current_tok->type == TOK_SEPARATOR_SEMICOLON)
+            eat_current_tok(); // eat extra ";" if it exists
+        if (current_tok->type == TOK_EOF)
+            goto out; // end of file
         cast_node_t *d = parse_declaration();
         list_add_tail(&d->list, &p->program.declarations);
     }
+out:
     return p;
 }
 
