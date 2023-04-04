@@ -54,55 +54,6 @@ static void handle_var_declaration(cast_node_t *node, symbol_table_t *st)
     }
 }
 
-// Create a local symbol table for each function
-static symbol_table_t *handle_fun(cast_node_t *node)
-{
-    symbol_table_t *local = symbol_table_create();
-    cast_node_t *tmp;
-    local->name = strdup(node->fun_declaration.identifier);
-
-    // add function parameters to local symbol table
-    if (node->fun_declaration.param_list)
-        list_for_each_entry(tmp, &node->fun_declaration.param_list->param_list.params, list) {
-            symbol_t *s = zalloc(sizeof(symbol_t));
-            s->name = strdup(tmp->param.param_declarator->param_declarator.identifier);
-            s->type = tmp->param.type;
-            symbol_table_add(local, s);
-        }
-
-    // add local variables to local symbol table
-    if (node->fun_declaration.compound_stmt)
-        list_for_each_entry(tmp, &node->fun_declaration.compound_stmt->compound_stmt.stmts, list) {
-            if (tmp->type == CAST_VAR_DECLARATION) {
-                handle_var_declaration(tmp, local);
-            }
-        }
-    return local;
-}
-
-static symbol_table_t *handle_declaration(cast_node_t *node, symbol_table_t *global)
-{
-    symbol_table_t *local = NULL;
-
-    switch (node->type) {
-        case CAST_VAR_DECLARATION:
-            handle_var_declaration(node, global); // add variable name to global symbol table
-            break;
-        case CAST_FUN_DECLARATION: {
-            symbol_t *s = zalloc(sizeof(symbol_t));
-            s->name = strdup(node->fun_declaration.identifier);
-            s->type = node->fun_declaration.type;
-            symbol_table_add(global, s); // add function name to global symbol table
-            local = handle_fun(node);
-            local->parent = global;
-            break;
-        }
-        default:
-            panic("unknown declaration type %d\n", node->type);
-    }
-    return local;
-}
-
 // Traverse CAST recursively in a depth-first manner
 static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
 {
@@ -114,21 +65,17 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
     switch (node->type) {
         case CAST_PROGRAM: {
             cast_node_t *d;
-            symbol_table_t *local;
             if (symtab)
                 panic("symbol table should be NULL for program node\n");
             global = symbol_table_create(); // create a global symbol table
             global->name = strdup("global");
             list_for_each_entry(d, &node->program.declarations, list) {
-                local = handle_declaration(d, global);
-                if (d->type == CAST_FUN_DECLARATION)
-                    traverse_cast(d, local);
-                else
                     traverse_cast(d, global);
             }
             break;
         }
         case CAST_VAR_DECLARATION:
+            handle_var_declaration(node, symtab);
             traverse_cast(node->var_declaration.var_declarator_list, symtab);
             break;
         case CAST_VAR_DECLARATOR_LIST: {
@@ -139,17 +86,26 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_VAR_DECLARATOR:
-            tc_debug(0,"Var identifier: %s\n", node->var_declarator.identifier);
+            tc_debug(0,"Var Declarator: %s\n", node->var_declarator.identifier);
             traverse_cast(node->var_declarator.num, symtab);
             break;
         case CAST_NUM:
             tc_debug(0, "Num: %d\n", node->num.value);
             break;
-        case CAST_FUN_DECLARATION:
-            tc_debug(0, "Fun identifier: %s\n", node->fun_declaration.identifier);
-            traverse_cast(node->fun_declaration.param_list, symtab);
-            traverse_cast(node->fun_declaration.compound_stmt, symtab);
+        case CAST_FUN_DECLARATION: {
+            symbol_t *s = zalloc(sizeof(symbol_t));
+            s->name = strdup(node->fun_declaration.identifier);
+            s->type = node->fun_declaration.type;
+            symbol_table_add(symtab, s); // add function name to global symbol table
+            symbol_table_t *local = symbol_table_create(); // create a local symbol table
+            local->name = strdup(node->fun_declaration.identifier);
+            local->parent = symtab;
+            tc_debug(0, "Fun Declaration: %s\n", node->fun_declaration.identifier);
+            // Add parameters and local variables to local symbol table
+            traverse_cast(node->fun_declaration.param_list, local);
+            traverse_cast(node->fun_declaration.compound_stmt, local);
             break;
+        }
         case CAST_PARAM_LIST: {
             cast_node_t *param;
             list_for_each_entry(param, &node->param_list.params, list) {
@@ -157,13 +113,19 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             }
             break;
         }
-        case CAST_PARAM:
+        case CAST_PARAM: {
+            symbol_t *s = zalloc(sizeof(symbol_t));
+            s->name = strdup(node->param.param_declarator->param_declarator.identifier);
+            s->type = node->param.type; //TODO: support array type
+            symbol_table_add(symtab, s);
             traverse_cast(node->param.param_declarator, symtab);
             break;
-        case CAST_PARAM_DECLARATOR:
-            tc_debug(0, "Param identifier: %s\n", node->param_declarator.identifier);
+        }
+        case CAST_PARAM_DECLARATOR: {
+            tc_debug(0, "Param Declarator: %s\n", node->param_declarator.identifier);
             traverse_cast(node->param_declarator.num, symtab);
             break;
+        }
         case CAST_COMPOUND_STMT: {
             cast_node_t *stmt;
             list_for_each_entry(stmt, &node->compound_stmt.stmts, list) {
