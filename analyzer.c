@@ -12,7 +12,8 @@ static void symbol_table_destroy(symbol_table_t *t)
 }
 
 // Lookup symbol in symbol table backwards
-static symbol_t *symbol_table_lookup(symbol_table_t *t, char *name)
+static symbol_t *symbol_table_lookup(symbol_table_t *t, char *name,
+                                     int upward)
 {
     int idx = symbol_table_hash(name);
     struct hlist_head *head = t->table + idx;
@@ -25,8 +26,8 @@ static symbol_t *symbol_table_lookup(symbol_table_t *t, char *name)
             return s;
     }
 
-    if (t->parent)
-        return symbol_table_lookup(t->parent, name);
+    if (upward && t->parent)
+        return symbol_table_lookup(t->parent, name, upward);
 
     return NULL;
 }
@@ -36,7 +37,7 @@ static void symbol_table_add(symbol_table_t *t, symbol_t *s)
     int idx = symbol_table_hash(s->name);
     struct hlist_head *head = t->table + idx;
 
-    if (symbol_table_lookup(t, s->name))
+    if (symbol_table_lookup(t, s->name, 0)) // just add to current scope
         panic("redeclaration of '%s'\n", s->name);
     hlist_add_head(&s->list, head);
     tc_debug(1, "<%s> %s, %s\n", t->name, token_type_to_str(s->type), s->name);
@@ -69,6 +70,7 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
                 panic("symbol table should be NULL for program node\n");
             global = symbol_table_create(); // create a global symbol table
             global->name = strdup("global");
+            node->program.symbol_table = global;
             list_for_each_entry(d, &node->program.declarations, list) {
                     traverse_cast(d, global);
             }
@@ -98,6 +100,7 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             s->type = node->fun_declaration.type;
             symbol_table_add(symtab, s); // add function name to global symbol table
             symbol_table_t *local = symbol_table_create(); // create a local symbol table
+            node->fun_declaration.symbol_table = local;
             local->name = strdup(node->fun_declaration.identifier);
             local->parent = symtab;
             tc_debug(0, "Fun Declaration: %s\n", node->fun_declaration.identifier);
@@ -129,12 +132,19 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
         case CAST_COMPOUND_STMT: {
             cast_node_t *stmt;
             list_for_each_entry(stmt, &node->compound_stmt.stmts, list) {
-                traverse_cast(stmt, symtab);
+                if (stmt->type == CAST_COMPOUND_STMT) {
+                    symbol_table_t *local = symbol_table_create();
+                    stmt->compound_stmt.symbol_table = local;
+                    local->name = strdup("local"); // create a nested local symbol table
+                    local->parent = symtab;
+                    traverse_cast(stmt, local);
+                } else
+                    traverse_cast(stmt, symtab);
             }
             break;
         }
         case CAST_ASSIGN_STMT: {
-            symbol_t *s = symbol_table_lookup(symtab, node->assign_stmt.identifier);
+            symbol_t *s = symbol_table_lookup(symtab, node->assign_stmt.identifier, 1);
             if (!s)
                 panic("‘%s’ undeclared (first use in %s function)\n",
                       node->assign_stmt.identifier, symtab->name);
@@ -181,7 +191,7 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
         }
         case CAST_FACTOR:
             if (node->factor.identifier) {
-                symbol_t *s = symbol_table_lookup(symtab, node->factor.identifier);
+                symbol_t *s = symbol_table_lookup(symtab, node->factor.identifier, 1);
                 if (!s)
                     panic("‘%s’ undeclared (first use in %s function)\n",
                           node->factor.identifier, symtab->name);

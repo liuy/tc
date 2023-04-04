@@ -117,6 +117,27 @@ typedef struct token {
     enum token_type type;
 } token_t;
 
+typedef struct symbol {
+    struct hlist_node list;
+    char *name;
+    enum token_type type;
+} symbol_t;
+
+/*
+ * Scopes are implemented as linked lists of symbol tables.
+ * There is one file scope and nested scopes for functions.
+ */
+typedef struct symbol_table {
+#define TABLE_SIZE 1024
+    struct hlist_head table[TABLE_SIZE];
+    struct symbol_table *parent;
+    char *name;
+} symbol_table_t;
+
+static inline int symbol_table_hash(char *str)
+{
+    return fnv1_hash(str) % TABLE_SIZE;
+}
 enum cast_node_type {
     CAST_PROGRAM,
     CAST_DECLARATION,
@@ -151,6 +172,7 @@ typedef struct cast_node {
     union {
         struct {
             struct list_head declarations;
+            symbol_table_t *symbol_table;
         } program;
 //        struct {
 //            struct cast_node *specifier;
@@ -172,6 +194,7 @@ typedef struct cast_node {
             char *identifier;
             struct cast_node *param_list;
             struct cast_node *compound_stmt;
+            symbol_table_t *symbol_table;
         } fun_declaration;
         struct {
             struct list_head params;
@@ -186,6 +209,7 @@ typedef struct cast_node {
         } param_declarator;
         struct {
             struct list_head stmts;
+            symbol_table_t *symbol_table;
         } compound_stmt;
         struct {
             char *identifier;
@@ -272,28 +296,6 @@ static inline int token_is(token_t *token, const char *str)
 cast_node_t *parse(struct list_head *tokens);
 
 // Semantic Analysis
-typedef struct symbol {
-    struct hlist_node list;
-    char *name;
-    enum token_type type;
-} symbol_t;
-
-/*
- * Scopes are implemented as linked lists of symbol tables.
- * There is one gobal scope and local scope per function.
- */
-typedef struct symbol_table {
-#define TABLE_SIZE 1024
-    struct hlist_head table[TABLE_SIZE];
-    struct symbol_table *parent;
-    char *name;
-} symbol_table_t;
-
-static inline int symbol_table_hash(char *str)
-{
-    return fnv1_hash(str) % TABLE_SIZE;
-}
-
 symbol_table_t *analyze_semantics(cast_node_t *ast);
 
 // Code Generation
