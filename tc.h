@@ -157,12 +157,9 @@ typedef struct cast_node {
 //            struct cast_node *declarator;
 //        } declaration;
         struct {
-            struct cast_node *type_specifier;
+            enum token_type type;
             struct cast_node *var_declarator_list;
         } var_declaration;
-        struct {
-            enum token_type type;
-        } type_specifier;
         struct {
             struct list_head var_declarators;
         } var_declarator_list;
@@ -171,7 +168,7 @@ typedef struct cast_node {
             struct cast_node *num;
         } var_declarator;
         struct {
-            struct cast_node *type_specifier;
+            enum token_type type;
             char *identifier;
             struct cast_node *param_list;
             struct cast_node *compound_stmt;
@@ -180,7 +177,7 @@ typedef struct cast_node {
             struct list_head params;
         } param_list;
         struct {
-            struct cast_node *type_specifier;
+            enum token_type type;
             struct cast_node *param_declarator;
         } param;
         struct {

@@ -75,16 +75,6 @@ static inline int possible_fun_declarator(token_t *tok)
     return next_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS; //(
 }
 
-// type-specifier = "int" | "float" | "char" | "void" ;
-static cast_node_t *parse_type_specifier(void)
-{
-    cast_node_t *node = zalloc(sizeof(cast_node_t));
-    node->type = CAST_TYPE_SPECIFIER;
-    node->type_specifier.type = current_tok->type;
-    eat_current_tok();
-    return node;
-}
-
 static cast_node_t *parse_num(void)
 {
     cast_node_t *n = zalloc(sizeof(cast_node_t));
@@ -142,7 +132,8 @@ static cast_node_t *parse_var_declaration(void)
     cast_node_t *n = zalloc(sizeof(cast_node_t));
 
     n->type = CAST_VAR_DECLARATION;
-    n->var_declaration.type_specifier = parse_type_specifier();
+    n->var_declaration.type = current_tok->type;
+    eat_current_tok(); // eat type-specifier
     n->var_declaration.var_declarator_list = parse_var_declarator_list();
     if (current_tok->type != TOK_SEPARATOR_SEMICOLON)
         panic("';' expected, but got %s\n", current_tok->lexeme);
@@ -184,7 +175,8 @@ static cast_node_t *parse_param(void)
         panic("type specifier expected, but got %s\n", current_tok->lexeme);
 
     n->type = CAST_PARAM;
-    n->param.type_specifier = parse_type_specifier();
+    n->param.type = current_tok->type;
+    eat_current_tok(); // eat type specifier
     n->param.param_declarator = parse_param_declarator();
     return n;
 }
@@ -447,7 +439,8 @@ static cast_node_t *parse_fun_declaration(void)
     cast_node_t *n = zalloc(sizeof(cast_node_t));
 
     n->type = CAST_FUN_DECLARATION;
-    n->fun_declaration.type_specifier = parse_type_specifier();
+    n->fun_declaration.type = current_tok->type;
+    eat_current_tok(); // eat type_specifier
     if (current_tok->type != TOK_IDENTIFIER)
         panic("identifier expected, but got %s\n", current_tok->lexeme);
     n->fun_declaration.identifier = strndup(current_tok->lexeme, strlen(current_tok->lexeme));

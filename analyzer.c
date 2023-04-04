@@ -49,7 +49,7 @@ static void handle_var_declaration(cast_node_t *node, symbol_table_t *st)
     list_for_each_entry(var, &node->var_declaration.var_declarator_list->var_declarator_list.var_declarators, list) {
         symbol_t *s = zalloc(sizeof(symbol_t));
         s->name = strdup(var->var_declarator.identifier);
-        s->type = node->var_declaration.type_specifier->type_specifier.type;
+        s->type = node->var_declaration.type;
         symbol_table_add(st, s);
     }
 }
@@ -66,7 +66,7 @@ static symbol_table_t *handle_fun(cast_node_t *node)
         list_for_each_entry(tmp, &node->fun_declaration.param_list->param_list.params, list) {
             symbol_t *s = zalloc(sizeof(symbol_t));
             s->name = strdup(tmp->param.param_declarator->param_declarator.identifier);
-            s->type = tmp->param.type_specifier->type_specifier.type;
+            s->type = tmp->param.type;
             symbol_table_add(local, s);
         }
 
@@ -91,7 +91,7 @@ static symbol_table_t *handle_declaration(cast_node_t *node, symbol_table_t *glo
         case CAST_FUN_DECLARATION: {
             symbol_t *s = zalloc(sizeof(symbol_t));
             s->name = strdup(node->fun_declaration.identifier);
-            s->type = node->fun_declaration.type_specifier->type_specifier.type;
+            s->type = node->fun_declaration.type;
             symbol_table_add(global, s); // add function name to global symbol table
             local = handle_fun(node);
             local->parent = global;
@@ -129,7 +129,6 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_VAR_DECLARATION:
-            traverse_cast(node->var_declaration.type_specifier, symtab);
             traverse_cast(node->var_declaration.var_declarator_list, symtab);
             break;
         case CAST_VAR_DECLARATOR_LIST: {
@@ -143,15 +142,11 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             tc_debug(0,"Var identifier: %s\n", node->var_declarator.identifier);
             traverse_cast(node->var_declarator.num, symtab);
             break;
-        case CAST_TYPE_SPECIFIER:
-            tc_debug(0, "Type specifier: %s\n", token_type_to_str(node->type_specifier.type));
-            break;
         case CAST_NUM:
             tc_debug(0, "Num: %d\n", node->num.value);
             break;
         case CAST_FUN_DECLARATION:
             tc_debug(0, "Fun identifier: %s\n", node->fun_declaration.identifier);
-            traverse_cast(node->fun_declaration.type_specifier, symtab);
             traverse_cast(node->fun_declaration.param_list, symtab);
             traverse_cast(node->fun_declaration.compound_stmt, symtab);
             break;
@@ -163,7 +158,6 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_PARAM:
-            traverse_cast(node->param.type_specifier, symtab);
             traverse_cast(node->param.param_declarator, symtab);
             break;
         case CAST_PARAM_DECLARATOR:
