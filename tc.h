@@ -296,7 +296,7 @@ static inline int token_is(token_t *token, const char *str)
 cast_node_t *parse(struct list_head *tokens);
 
 // Semantic Analysis
-symbol_table_t *analyze_semantics(cast_node_t *ast);
+void analyze_semantics(cast_node_t *ast);
 
 // Code Generation
 void generate_code(cast_node_t *ast, code_generator_t *code_generator);

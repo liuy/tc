@@ -87,7 +87,7 @@ int main(int argc, char **argv)
     cast_node_t *ast = parse(tokens_list);
 
     // Perform semantic analysis
-    symbol_table_t *symbol_table = analyze_semantics(ast);
+    analyze_semantics(ast);
 
     // Generate code
     code_generator_t *code_generator =
@@ -109,7 +109,6 @@ int main(int argc, char **argv)
     // Free memory
     // free(tokens);
     // free(ast);
-    free(symbol_table);
     free(code_generator);
     free(optimization_pass);
     free(debug_info);

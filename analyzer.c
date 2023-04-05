@@ -56,15 +56,15 @@ static void handle_var_declaration(cast_node_t *node, symbol_table_t *st)
 }
 
 // Traverse CAST recursively in a depth-first manner
-static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
+static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
 {
-    symbol_table_t *global = NULL;
 
     if (!node)
-        goto out;
+        return;
 
     switch (node->type) {
         case CAST_PROGRAM: {
+            symbol_table_t *global;
             cast_node_t *d;
             if (symtab)
                 panic("symbol table should be NULL for program node\n");
@@ -203,12 +203,10 @@ static symbol_table_t *traverse_cast(cast_node_t *node, symbol_table_t *symtab)
         default:
             break;
     }
-
-out:
-            return global;
+    return;
 }
 
-symbol_table_t *analyze_semantics(cast_node_t *cast_root)
+void analyze_semantics(cast_node_t *cast_root)
 {
-    return traverse_cast(cast_root, NULL);
+    traverse_cast(cast_root, NULL);
 }
