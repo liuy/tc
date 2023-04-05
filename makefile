@@ -10,8 +10,8 @@ all: tc
 tc: tc.h list.h main.c lex.c parser.c analyzer.c
 	gcc $(CFLAGS) -o tc main.c lex.c parser.c analyzer.c
 
-test_lex: test/test_lex.c lex.c
-	gcc -o test/test_lex test/test_lex.c lex.c $(CHECK_FLAGS)
+test_lex: test/test_lex.c lex.c parser.c
+	gcc -o test/test_lex test/test_lex.c lex.c parser.c $(CHECK_FLAGS)
 
 check: test_lex
 	test/test_lex

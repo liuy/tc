@@ -9,6 +9,9 @@ static void token_free(token_t *tok)
     free(tok);
 }
 
+/**********************************************************************
+ * Lexer tests
+ **********************************************************************/
 START_TEST(test_lex_numbers)
 {
     char *input = "123 123456789l 123.456";
@@ -46,8 +49,8 @@ START_TEST(test_lex_keywords)
     //ck_assert_ptr_nonnull(tokens);
     ck_assert_int_eq(list_size(tokens), 33);
 
-    token_t *tok, *next;
-    list_for_each_entry_safe(tok, next, tokens, list) {
+    token_t *tok;
+    list_for_each_entry(tok, tokens, list) {
         if (tok->type == TOK_KEYWORD_AUTO) {
             ck_assert_str_eq(tok->lexeme, "auto");
         } else if (tok->type == TOK_KEYWORD_BREAK) {
@@ -127,8 +130,8 @@ START_TEST(test_lex_operators)
     //ck_assert_ptr_nonnull(tokens);
     ck_assert_int_eq(list_size(tokens), 33);
 
-    token_t *tok, *next;
-    list_for_each_entry_safe(tok, next, tokens, list) {
+    token_t *tok;
+    list_for_each_entry(tok, tokens, list) {
         if (tok->type == TOK_OPERATOR_ADD) {
             ck_assert_str_eq(tok->lexeme, "+");
         } else if (tok->type == TOK_OPERATOR_SUB) {
@@ -230,11 +233,12 @@ END_TEST
 START_TEST(test_lex_whitespaces_and_comments)
 {
     char *input = "/* This is a comment */ int main()\n {\n \treturn 0;\n } \
-		   // Another comment";
+        // Another comment";
     struct list_head *tokens = lex(input);
-    ck_assert_int_eq(list_size(tokens), 10);
+    token_t *tok;
 
-    token_t *tok = list_entry_grab(tokens, token_t, list);
+    ck_assert_int_eq(list_size(tokens), 10);
+    tok = list_entry_grab(tokens, token_t, list);
     ck_assert_int_eq(tok->type, TOK_KEYWORD_INT);
     ck_assert_str_eq(tok->lexeme, "int");
     token_free(tok);
@@ -276,33 +280,117 @@ START_TEST(test_lex_whitespaces_and_comments)
 }
 END_TEST
 
-Suite *lex_suite(void)
+Suite *lexer_suite(void)
 {
     Suite *s;
-    TCase *tc_numbers, *tc_keywords, *tc_operators, *tc_strings_and_chars,
-          *tc_whitespaces_and_comments;
+    TCase *lexer;
 
-    s = suite_create("Lexical Analysis Tests");
+    s = suite_create("\n Lexical Analysis Tests");
 
-    tc_numbers = tcase_create("Numbers");
-    tcase_add_test(tc_numbers, test_lex_numbers);
-    suite_add_tcase(s, tc_numbers);
+    lexer = tcase_create("Lexer");
+    tcase_add_test(lexer, test_lex_numbers);
+    tcase_add_test(lexer, test_lex_keywords);
+    tcase_add_test(lexer, test_lex_operators);
+    tcase_add_test(lexer, test_lex_strings_and_chars);
+    tcase_add_test(lexer, test_lex_whitespaces_and_comments);
+    suite_add_tcase(s, lexer);
 
-    tc_keywords = tcase_create("Keywords");
-    tcase_add_test(tc_keywords, test_lex_keywords);
-    suite_add_tcase(s, tc_keywords);
+    return s;
+}
 
-    tc_operators = tcase_create("Operators");
-    tcase_add_test(tc_operators, test_lex_operators);
-    suite_add_tcase(s, tc_operators);
+/**********************************************************************
+ * Parser tests
+ **********************************************************************/
+START_TEST(test_parser_empty_stmt)
+{
+    char *prog = ";int y;;int add(){;;};;int main(){;int x;;x = 2;y = 2;return x;};";
+    struct list_head *tokens = lex(prog);
+    cast_node_t* root = parse(tokens);
+    token_t *tok;
 
-    tc_strings_and_chars = tcase_create("Strings and Chars");
-    tcase_add_test(tc_strings_and_chars, test_lex_strings_and_chars);
-    suite_add_tcase(s, tc_strings_and_chars);
+    ck_assert_ptr_ne(root, NULL);
+    ck_assert_int_eq(root->type, CAST_PROGRAM);
+    ck_assert_int_eq(list_size(&root->program.declarations), 3);
 
-    tc_whitespaces_and_comments = tcase_create("Whitespaces and Comments");
-    tcase_add_test(tc_whitespaces_and_comments, test_lex_whitespaces_and_comments);
-    suite_add_tcase(s, tc_whitespaces_and_comments);
+    list_for_each_entry(tok, tokens, list) {
+        list_del(&tok->list);
+        token_free(tok);
+    }
+}
+END_TEST
+
+START_TEST(test_parser_fun_declaration)
+{
+    char *prog = "int add(int x, int y){return x + y;}";
+    struct list_head *tokens = lex(prog);
+    cast_node_t* root = parse(tokens);
+
+    ck_assert_ptr_ne(root, NULL);
+    ck_assert_int_eq(root->type, CAST_PROGRAM);
+    ck_assert_int_eq(list_size(&root->program.declarations), 1);
+
+    cast_node_t *func = list_entry_grab(&root->program.declarations, cast_node_t, list);
+    ck_assert_int_eq(func->type, CAST_FUN_DECLARATION);
+    ck_assert_int_eq(func->fun_declaration.type, TOK_KEYWORD_INT);
+    ck_assert_str_eq(func->fun_declaration.identifier, "add");
+    ck_assert_int_eq(list_size(&func->fun_declaration.param_list->param_list.params), 2);
+
+    cast_node_t *param = list_entry_grab(&func->fun_declaration.param_list->param_list.params, cast_node_t, list);
+    ck_assert_int_eq(param->type, CAST_PARAM);
+    ck_assert_int_eq(param->param.type, TOK_KEYWORD_INT);
+    ck_assert_str_eq(param->param.param_declarator->param_declarator.identifier, "x");
+    param = list_entry_grab(&func->fun_declaration.param_list->param_list.params, cast_node_t, list);
+    ck_assert_int_eq(param->type, CAST_PARAM);
+    ck_assert_int_eq(param->param.type, TOK_KEYWORD_INT);
+    ck_assert_str_eq(param->param.param_declarator->param_declarator.identifier, "y");
+    ck_assert_int_eq(list_size(&func->fun_declaration.compound_stmt->compound_stmt.stmts), 1);
+    cast_node_t *stmt = list_entry_grab(&func->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+    ck_assert_int_eq(stmt->type, CAST_RETURN_STMT);
+    ck_assert_int_eq(stmt->return_stmt.expr->type, CAST_EXPR);
+}
+
+START_TEST(test_parser_return)
+{
+    char *prog = "int main()\n{\n\treturn 0;\n}";
+    struct list_head *tokens = lex(prog);
+    token_t *tok;
+    cast_node_t* root = parse(tokens);
+
+    ck_assert_ptr_ne(root, NULL);
+    ck_assert_int_eq(root->type, CAST_PROGRAM);
+    ck_assert_int_eq(list_size(&root->program.declarations), 1);
+
+    cast_node_t *func = list_entry_grab(&root->program.declarations, cast_node_t, list);
+    ck_assert_int_eq(func->type, CAST_FUN_DECLARATION);
+    ck_assert_int_eq(func->fun_declaration.type, TOK_KEYWORD_INT);
+    ck_assert_str_eq(func->fun_declaration.identifier, "main");
+    ck_assert_ptr_eq(func->fun_declaration.param_list, NULL);
+    ck_assert_ptr_ne(func->fun_declaration.compound_stmt, NULL);
+    ck_assert_int_eq(func->fun_declaration.compound_stmt->type, CAST_COMPOUND_STMT);
+    ck_assert_int_eq(list_size(&func->fun_declaration.compound_stmt->compound_stmt.stmts), 1);
+    cast_node_t *ret = list_entry_grab(&func->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+    ck_assert_int_eq(ret->type, CAST_RETURN_STMT);
+    ck_assert_int_eq(ret->return_stmt.expr->type, CAST_EXPR);
+
+    list_for_each_entry(tok, tokens, list) {
+        list_del(&tok->list);
+        token_free(tok);
+    }
+}
+END_TEST
+
+Suite *parser_suite(void)
+{
+    Suite *s;
+    TCase *parser;
+
+    s = suite_create("Syntax Analysis Tests");
+
+    parser = tcase_create("Parser");
+    tcase_add_test(parser, test_parser_empty_stmt);
+    tcase_add_test(parser, test_parser_return);
+    tcase_add_test(parser, test_parser_fun_declaration);
+    suite_add_tcase(s, parser);
 
     return s;
 }
@@ -313,8 +401,10 @@ int main(void)
     Suite *s;
     SRunner *sr;
 
-    s = lex_suite();
+    s = lexer_suite();
     sr = srunner_create(s);
+    s = parser_suite();
+    srunner_add_suite(sr, s);
     srunner_run_all(sr, CK_VERBOSE);
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);

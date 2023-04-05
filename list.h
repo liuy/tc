@@ -7,121 +7,153 @@
 #define _LOCAL(var, line) __LOCAL(var, line)
 #define LOCAL(var) _LOCAL(var, __LINE__)
 
+#define container_of(ptr, type, member) ({			\
+	const typeof(((type *)0)->member) *__mptr = (ptr);	\
+	(type *)((char *)__mptr - offsetof(type, member)); })
+
 struct list_node {
-    struct list_node *prev, *next;
+	struct list_node *next;
+	struct list_node *prev;
 };
 
 struct list_head {
-    struct list_node node;
+	struct list_node n;
 };
 
-// Initialize a list head
-#define LIST_HEAD_INIT(name) { { &(name.node), &(name.node) } }
+#define LIST_HEAD_INIT(name) { { &(name.n), &(name.n) } }
+#define LIST_NODE_INIT { NULL, NULL }
 
-// Declare and initialize a list head
-#define LIST_HEAD(name) \\
-    struct list_head name = LIST_HEAD_INIT(name)
+#define LIST_HEAD(name) \
+	struct list_head name = LIST_HEAD_INIT(name)
+#define LIST_NODE(name) \
+	struct list_node name = LIST_NODE_INIT
 
-// Initialize a list node
-static inline void INIT_LIST_NODE(struct list_node *node)
+static inline void INIT_LIST_HEAD(struct list_head *list)
 {
-    node->next = NULL;
-    node->prev = NULL;
+	list->n.next = &list->n;
+	list->n.prev = &list->n;
 }
 
-// Initialize a list head
-static inline void INIT_LIST_HEAD(struct list_head *head)
+static inline void INIT_LIST_NODE(struct list_node *list)
 {
-    head->node.next = &(head->node);
-    head->node.prev = &(head->node);
+	list->next = NULL;
+	list->prev = NULL;
 }
 
-// Add a new node to the list
-static inline void list_add(struct list_node *new,
-                            struct list_node *prev,
-                            struct list_node *next)
-{
-    next->prev = new;
-    new->next = next;
-    new->prev = prev;
-    prev->next = new;
-}
+#define list_first_entry(head, type, member) \
+	list_entry((head)->n.next, type, member)
 
-// Add a new node to the head of the list
-static inline void list_add_head(struct list_node *new, struct list_head *head)
-{
-    list_add(new, &(head->node), head->node.next);
-}
-
-// Add a new node to the tail of the list
-static inline void list_add_tail(struct list_node *new, struct list_head *head)
-{
-    list_add(new, head->node.prev, &(head->node));
-}
-
-// Remove a node from the list
-static inline void __list_del(struct list_node *prev, struct list_node *next)
-{
-    next->prev = prev;
-    prev->next = next;
-}
-
-// Remove a node from the list
-static inline void list_del(struct list_node *entry)
-{
-    __list_del(entry->prev, entry->next);
-}
-
-// Remove a node from the list and initialize it
-static inline void list_del_init(struct list_node *entry)
-{
-    __list_del(entry->prev, entry->next);
-    INIT_LIST_NODE(entry);
-}
-
-// Move a node to the head of another list
-static inline void list_move(struct list_node *list, struct list_head *head)
-{
-    __list_del(list->prev, list->next);
-    list_add_head(list, head);
-}
-
-// Move a node to the tail of another list
-static inline void list_move_tail(struct list_node *list, struct list_head *head)
-{
-    __list_del(list->prev, list->next);
-    list_add_tail(list, head);
-}
-
-// Check if the list is empty
 static inline int list_empty(const struct list_head *head)
 {
-    return head->node.next == &(head->node);
+	return head->n.next == &head->n;
 }
 
-// Get the struct for this entry
+static inline int list_linked(const struct list_node *node)
+{
+	return node->next != NULL;
+}
+
 #define list_entry(ptr, type, member) \
-    container_of(ptr, type, member)
+	container_of(ptr, type, member)
 
-// Get the struct for this entry
-#define container_of(ptr, type, member) ({ \
-    const typeof(((type *)0)->member) *__mptr = (ptr); \
-    (type *)((char *)__mptr - offsetof(type, member)); })
+#define list_for_each(pos, head)					\
+	for (typeof(pos) LOCAL(n) = (pos = (head)->n.next, pos->next);	\
+	     pos != &(head)->n;						\
+	     pos = LOCAL(n), LOCAL(n) = pos->next)
 
-// Iterate over a list
-#define list_for_each(pos, head) \
-    for (pos = (head)->node.next; pos != &((head)->node); pos = pos->next)
+#define list_for_each_entry(pos, head, member)				\
+	for (typeof(pos) LOCAL(n) = (pos = list_entry((head)->n.next,	\
+						      typeof(*pos),	\
+						      member),		\
+				     list_entry(pos->member.next,	\
+						typeof(*pos),		\
+						member));		\
+	     &pos->member != &(head)->n;				\
+	     pos = LOCAL(n), LOCAL(n) = list_entry(LOCAL(n)->member.next, \
+						   typeof(*LOCAL(n)),	\
+						   member))
 
-// Iterate over a list safe against removal of list entry
-#define list_for_each_safe(pos, n, head) \
-    for (pos = (head)->node.next, n = pos->next; pos != &(head->node); \
-            pos = n, n = pos->next)
+static inline void __list_add(struct list_node *one,
+                              struct list_node *prev,
+                              struct list_node *next)
+{
+	next->prev = one;
+	one->next = next;
+	one->prev = prev;
+	prev->next = one;
+}
 
-// Iterate over list of given type
-#define list_for_each_entry(pos, head, member) \
-    for (pos = list_entry((head)->node.next, typeof(*pos), member); \
-         &pos->member != &(head)->node; \
-         pos = list_entry(pos->member.next, typeof(*pos), member))
+static inline void list_add(struct list_node *one, struct list_head *head)
+{
+	__list_add(one, &head->n, head->n.next);
+}
+
+static inline void list_add_tail(struct list_node *one, struct list_head *head)
+{
+	__list_add(one, head->n.prev, &head->n);
+}
+
+static inline void __list_del(struct list_node *prev, struct list_node *next)
+{
+	next->prev = prev;
+	prev->next = next;
+}
+
+static inline void __list_del_entry(struct list_node *entry)
+{
+	__list_del(entry->prev, entry->next);
+}
+
+static inline void list_del(struct list_node *entry)
+{
+	__list_del(entry->prev, entry->next);
+	entry->next = entry->prev = NULL;
+}
+
+static inline void list_move(struct list_node *list, struct list_head *head)
+{
+	__list_del_entry(list);
+	list_add(list, head);
+}
+
+static inline void list_move_tail(struct list_node *list,
+                                  struct list_head *head)
+{
+	__list_del_entry(list);
+	list_add_tail(list, head);
+}
+
+static inline void __list_splice(const struct list_head *list,
+                                 struct list_node *prev,
+                                 struct list_node *next)
+{
+	struct list_node *first = list->n.next;
+	struct list_node *last = list->n.prev;
+
+	first->prev = prev;
+	prev->next = first;
+
+	last->next = next;
+	next->prev = last;
+}
+
+static inline void list_splice_init(struct list_head *list,
+				    struct list_head *head)
+{
+	if (!list_empty(list)) {
+		__list_splice(list, &head->n, head->n.next);
+		INIT_LIST_HEAD(list);
+	}
+}
+
+static inline void list_splice_tail_init(struct list_head *list,
+					 struct list_head *head)
+{
+	if (!list_empty(list)) {
+		__list_splice(list, head->n.prev, &head->n);
+		INIT_LIST_HEAD(list);
+	}
+}
 
 // Get the size of a list
 #define list_size(head) ({ \
@@ -135,21 +167,10 @@ static inline int list_empty(const struct list_head *head)
 
 // Get the first entry of list and remove it from the list
 #define list_entry_grab(head, type, member) ({ \
-    type *first_entry = list_entry((head)->node.next, type, member); \
+    type *first_entry = list_entry((head)->n.next, type, member); \
     list_del(&(first_entry->member)); \
     first_entry; \
 })
-
-// Iterate over list of given type safe against removal of list entry
-#define list_for_each_entry_safe(pos, n, head, member) \
-    for (pos = list_entry((head)->node.next, typeof(*pos), member), \
-	 n = list_entry(pos->member.next, typeof(*pos), member); \
-	 &pos->member != &(head)->node; \
-	 pos = n, n = list_entry(n->member.next, typeof(*n), member))
-
-// Get the first entry of list
-#define list_first_entry(head, type, member) \
-    list_entry((head)->node.next, type, member)
 
 // Get the next entry of list
 #define list_next_entry(pos, member) \
