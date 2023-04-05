@@ -400,6 +400,8 @@ struct list_head *lex(char *source_code)
             if (*current_char == '/') {
                 current_char++;
                 while (*current_char != '\n') {
+                    if (*current_char == '\0')
+                        break;
                     current_char++;
                 }
                 continue;
@@ -407,6 +409,8 @@ struct list_head *lex(char *source_code)
                 //Skip multi line comments
                 current_char++;
                 while (*current_char != '*' || *(current_char+1) != '/') {
+                    if (*current_char == '\0')
+                        break;
                     current_char++;
                 }
                 current_char += 2;
