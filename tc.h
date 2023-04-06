@@ -187,7 +187,7 @@ typedef struct cast_node {
         } var_declarator_list;
         struct {
             char *identifier;
-            struct cast_node *num;
+            int num;
         } var_declarator;
         struct {
             enum token_type type;
@@ -205,7 +205,7 @@ typedef struct cast_node {
         } param;
         struct {
             char *identifier;
-            struct cast_node *num;
+            int num;
         } param_declarator;
         struct {
             struct list_head stmts;
@@ -246,12 +246,9 @@ typedef struct cast_node {
         struct {
             enum token_type op; // op for term
             char *identifier;
-            struct cast_node *num;
+            int num;
             struct cast_node *expr;
         } factor;
-        struct {
-            int value;
-        } num;
     };
 } cast_node_t;
 

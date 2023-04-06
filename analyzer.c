@@ -88,11 +88,11 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_VAR_DECLARATOR:
-            tc_debug(0,"Var Declarator: %s\n", node->var_declarator.identifier);
-            traverse_cast(node->var_declarator.num, symtab);
-            break;
-        case CAST_NUM:
-            tc_debug(0, "Num: %d\n", node->num.value);
+            if (node->var_declarator.num)
+                tc_debug(0,"Var Declarator: %s[%d]\n", node->var_declarator.identifier,
+                        node->var_declarator.num);
+            else
+                tc_debug(0,"Var Declarator: %s\n", node->var_declarator.identifier);
             break;
         case CAST_FUN_DECLARATION: {
             symbol_t *s = zalloc(sizeof(symbol_t));
@@ -125,8 +125,11 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_PARAM_DECLARATOR: {
-            tc_debug(0, "Param Declarator: %s\n", node->param_declarator.identifier);
-            traverse_cast(node->param_declarator.num, symtab);
+            if (node->var_declarator.num)
+                tc_debug(0,"Param Declarator: %s[%d]\n", node->param_declarator.identifier,
+                        node->param_declarator.num);
+            else
+                tc_debug(0, "Param Declarator: %s\n", node->param_declarator.identifier);
             break;
         }
         case CAST_COMPOUND_STMT: {
@@ -196,9 +199,11 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
                     panic("‘%s’ undeclared (first use in %s function)\n",
                           node->factor.identifier, symtab->name);
                 tc_debug(0, "Factor identifier: %s\n", node->factor.identifier);
+            } else if (node->factor.expr) {
+                traverse_cast(node->factor.expr, symtab);
+            } else {
+                tc_debug(0, "Factor number: %d\n", node->factor.num);
             }
-            traverse_cast(node->factor.num, symtab);
-            traverse_cast(node->factor.expr, symtab);
             break;
         default:
             break;

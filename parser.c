@@ -75,19 +75,6 @@ static inline int possible_fun_declarator(token_t *tok)
     return next_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS; //(
 }
 
-static cast_node_t *parse_num(void)
-{
-    cast_node_t *n = zalloc(sizeof(cast_node_t));
-
-    if (current_tok->type != TOK_CONSTANT_INT)
-        panic("expected TOK_CONSTANT_INT, but got %s\n", current_tok->lexeme);
-
-    n->type = CAST_NUM;
-    n->num.value = atoi(current_tok->lexeme);
-    eat_current_tok();
-    return n;
-}
-
 // var-declarator = identifier [ "[" num "]" ] ;
 static cast_node_t *parse_var_declarator(void)
 {
@@ -102,7 +89,10 @@ static cast_node_t *parse_var_declarator(void)
     eat_current_tok();
     if (current_tok->type == TOK_SEPARATOR_LEFT_BRACKET) {
         eat_current_tok(); // eat [
-        n->var_declarator.num = parse_num();
+        if (current_tok->type != TOK_CONSTANT_INT)
+            panic("expected TOK_CONSTANT_INT, but got %s\n", current_tok->lexeme);
+        n->var_declarator.num = atoi(current_tok->lexeme);
+        eat_current_tok(); // eat num
         if (current_tok->type != TOK_SEPARATOR_RIGHT_BRACKET)
             panic("']' expected, but got %s\n", current_tok->lexeme);
         eat_current_tok(); // eat ]
@@ -155,7 +145,10 @@ static cast_node_t *parse_param_declarator(void)
     eat_current_tok(); // eat identifier
     if (current_tok->type == TOK_SEPARATOR_LEFT_BRACKET) {
         eat_current_tok(); // eat [
-        n->param_declarator.num = parse_num();
+        if (current_tok->type != TOK_CONSTANT_INT)
+            panic("expected TOK_CONSTANT_INT, but got %s\n", current_tok->lexeme);
+        n->param_declarator.num = atoi(current_tok->lexeme);
+        eat_current_tok(); // eat num
         if (current_tok->type != TOK_SEPARATOR_RIGHT_BRACKET)
             panic("']' expected, but got %s\n", current_tok->lexeme);
         eat_current_tok(); // eat ]
@@ -201,7 +194,8 @@ static cast_node_t *parse_factor(void)
 
     n->type = CAST_FACTOR;
     if (current_tok->type == TOK_CONSTANT_INT) {
-        n->factor.num = parse_num();
+        n->factor.num = atoi(current_tok->lexeme);
+        eat_current_tok(); // eat num
     } else if (current_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS) {
         eat_current_tok(); // eat '('
         n->factor.expr = parse_expr();
