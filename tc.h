@@ -161,7 +161,7 @@ enum cast_node_type {
     CAST_TERM,
     CAST_FACTOR,
     CAST_IDENTIFIER,
-    CAST_NUM
+    CAST_NUMBER
 };
 
 // C Abstract Syntax Tree (CAST) node
@@ -227,28 +227,16 @@ typedef struct cast_node {
         struct {
             struct cast_node *expr;
         } return_stmt;
-        struct {
-            struct list_head relationals;
-        } expr;
-        struct {
-            enum token_type op; // op for expr
-            struct cast_node *left;
-            struct cast_node *right;
-        } relational_expr;
-        struct {
-            enum token_type op; // op for relational_expr
-            struct list_head terms;
-        } simple_expr;
-        struct {
-            enum token_type op; // op for simple_expr
-            struct list_head factors;
-        } term;
-        struct {
-            enum token_type op; // op for term
-            char *identifier;
+        union {
+            struct {
+                enum token_type type;
+                struct cast_node *left;
+                struct cast_node *right;
+            } op;
             int num;
+            char *identifier;
             struct cast_node *expr;
-        } factor;
+        } expr;
     };
 } cast_node_t;
 

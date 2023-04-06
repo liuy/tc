@@ -190,23 +190,26 @@ static cast_node_t *parse_param_list(void)
 // factor = num | '(' expr ')' | identifier
 static cast_node_t *parse_factor(void)
 {
-    cast_node_t *n = zalloc(sizeof(cast_node_t));
+    cast_node_t *n = NULL;
 
-    n->type = CAST_FACTOR;
-    if (current_tok->type == TOK_CONSTANT_INT) {
-        n->factor.num = atoi(current_tok->lexeme);
-        eat_current_tok(); // eat num
+    if (current_tok->type == TOK_IDENTIFIER) {
+        n = zalloc(sizeof(cast_node_t));
+        n->type = CAST_IDENTIFIER;
+        n->expr.identifier = strdup(current_tok->lexeme);
+        eat_current_tok(); // eat identifier
+    } else if (current_tok->type == TOK_CONSTANT_INT) {
+        n = zalloc(sizeof(cast_node_t));
+        n->type = CAST_NUMBER;
+        n->expr.num = atoi(current_tok->lexeme);
+        eat_current_tok(); // eat number
     } else if (current_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS) {
-        eat_current_tok(); // eat '('
-        n->factor.expr = parse_expr();
+        eat_current_tok(); // eat "("
+        n = parse_expr();
         if (current_tok->type != TOK_SEPARATOR_RIGHT_PARENTHESIS)
             panic("')' expected, but got %s\n", current_tok->lexeme);
-        eat_current_tok(); // eat ')'
-    } else if (current_tok->type == TOK_IDENTIFIER) {
-        n->factor.identifier = strndup(current_tok->lexeme, strlen(current_tok->lexeme));
-        eat_current_tok(); // eat identifier
+        eat_current_tok(); // eat ")"
     } else {
-        panic("unexpected token %s\n", current_tok->lexeme);
+        panic("Expected identifier, number, or '(', but got %s\n", current_tok->lexeme);
     }
 
     return n;
@@ -215,86 +218,78 @@ static cast_node_t *parse_factor(void)
 // term = factor { ("*" | "/") factor }
 static cast_node_t *parse_term(void)
 {
-    cast_node_t *n = zalloc(sizeof(cast_node_t));
-    cast_node_t *f;
+    cast_node_t *n = parse_factor();
 
-    n->type = CAST_TERM;
-    INIT_LIST_HEAD(&n->term.factors);
-    f = parse_factor();
-    f->factor.op = TOK_NULL;
-    list_add_tail(&f->list, &n->term.factors);
     while (current_tok->type == TOK_OPERATOR_MUL ||
            current_tok->type == TOK_OPERATOR_DIV) {
-        f->factor.op = current_tok->type;
+        cast_node_t *op_node = zalloc(sizeof(cast_node_t));
+        op_node->type = CAST_TERM;
+        op_node->expr.op.type = current_tok->type;
+        op_node->expr.op.left = n;
         eat_current_tok(); // eat "*" or "/"
-        f = parse_factor();
-        list_add_tail(&f->list, &n->term.factors);
+        op_node->expr.op.right = parse_factor();
+        n = op_node;
     }
 
     return n;
 }
 
-// simple_expr = term { ("+" | "-") term }
-static cast_node_t *parse_simple_expression(void)
+// simple-expression = term { ("+" | "-") term } ;
+static cast_node_t *parse_simple_expr(void)
 {
-    cast_node_t *n = zalloc(sizeof(cast_node_t));
-    cast_node_t *t;
+    cast_node_t *n = parse_term();
 
-    n->type = CAST_SIMPLE_EXPR;
-    INIT_LIST_HEAD(&n->simple_expr.terms);
-    t = parse_term();
-    t->term.op = TOK_NULL;
-    list_add_tail(&t->list, &n->simple_expr.terms);
     while (current_tok->type == TOK_OPERATOR_ADD ||
            current_tok->type == TOK_OPERATOR_SUB) {
-        t->term.op = current_tok->type;
+        cast_node_t *op_node = zalloc(sizeof(cast_node_t));
+        op_node->type = CAST_SIMPLE_EXPR;
+        op_node->expr.op.type = current_tok->type;
+        op_node->expr.op.left = n;
         eat_current_tok(); // eat "+" or "-"
-        t = parse_term();
-        list_add_tail(&t->list, &n->simple_expr.terms);
+        op_node->expr.op.right = parse_term();
+        n = op_node;
     }
+
     return n;
 }
 
-// relational_expr = simple_expr [ ("<" | "<=" | ">" | ">=" | "==" | "!=") simple_expr ]
-static cast_node_t *parse_relational_expression(void)
+// relational-expression = simple-expression [ ("<" | "<= " | ">" | ">=" | "!=" | "==") simple-expression ] ;
+static cast_node_t *parse_relational_expr(void)
 {
-    cast_node_t *n = zalloc(sizeof(cast_node_t));
-    cast_node_t *s;
+    cast_node_t *n = parse_simple_expr();
 
-    n->type = CAST_RELATIONAL_EXPR;
-    s = parse_simple_expression();
-    s->simple_expr.op = TOK_NULL;
-    n->relational_expr.left = s;
-    if (current_tok->type == TOK_OPERATOR_LESS_THAN ||
-        current_tok->type == TOK_OPERATOR_LESS_THAN_OR_EQUAL_TO ||
-        current_tok->type == TOK_OPERATOR_GREATER_THAN ||
-        current_tok->type == TOK_OPERATOR_GREATER_THAN_OR_EQUAL_TO ||
-        current_tok->type == TOK_OPERATOR_EQUAL ||
-        current_tok->type == TOK_OPERATOR_NOT_EQUAL) {
-        s->simple_expr.op = current_tok->type;
-        eat_current_tok(); // eat "<", "<=", ">", ">=", "==", or "!="
-        n->relational_expr.right = parse_simple_expression();
+    while (current_tok->type == TOK_OPERATOR_LESS_THAN ||
+           current_tok->type == TOK_OPERATOR_LESS_THAN_OR_EQUAL_TO ||
+           current_tok->type == TOK_OPERATOR_GREATER_THAN ||
+           current_tok->type == TOK_OPERATOR_GREATER_THAN_OR_EQUAL_TO ||
+           current_tok->type == TOK_OPERATOR_NOT_EQUAL ||
+           current_tok->type == TOK_OPERATOR_EQUAL) {
+        cast_node_t *op_node = zalloc(sizeof(cast_node_t));
+        op_node->type = CAST_RELATIONAL_EXPR;
+        op_node->expr.op.type = current_tok->type;
+        op_node->expr.op.left = n;
+        eat_current_tok(); // eat "<" or "<=" or ">" or ">=" or "!=" or "=="
+        op_node->expr.op.right = parse_simple_expr();
+        n = op_node;
     }
+
     return n;
 }
 
-
-// expr = relational_expr { ("&&" | "||") relational_expr }
+// expression = relational-expression { ("||" | "&&") relational-expression } ;
 static cast_node_t *parse_expr(void)
 {
-    cast_node_t *n = zalloc(sizeof(cast_node_t));
-    cast_node_t *rel;;
-    n->type = CAST_EXPR;
-    INIT_LIST_HEAD(&n->expr.relationals);
-    rel = parse_relational_expression();
-    rel->relational_expr.op = TOK_NULL;
-    list_add_tail(&rel->list, &n->expr.relationals);
-    while (current_tok->type == TOK_OPERATOR_LOGICAL_AND ||
-           current_tok->type == TOK_OPERATOR_LOGICAL_OR) {
-        rel->relational_expr.op = current_tok->type;
-        eat_current_tok(); // eat "&&" or "||"
-        rel = parse_relational_expression();
-        list_add_tail(&rel->list, &n->expr.relationals);
+    cast_node_t *n = parse_relational_expr();
+
+    while (current_tok->type == TOK_OPERATOR_LOGICAL_OR ||
+           current_tok->type == TOK_OPERATOR_LOGICAL_AND) {
+        cast_node_t *op_node = zalloc(sizeof(cast_node_t));
+        op_node->type = CAST_EXPR;
+        op_node->expr.op.type = current_tok->type;
+        op_node->expr.op.left = n;
+        eat_current_tok(); // eat "||" or "&&"
+        op_node->expr.op.right = parse_relational_expr();
+        n = op_node;
     }
 
     return n;

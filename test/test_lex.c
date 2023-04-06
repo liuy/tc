@@ -346,8 +346,9 @@ START_TEST(test_parser_fun_declaration)
     ck_assert_int_eq(list_size(&func->fun_declaration.compound_stmt->compound_stmt.stmts), 1);
     cast_node_t *stmt = list_entry_grab(&func->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
     ck_assert_int_eq(stmt->type, CAST_RETURN_STMT);
-    ck_assert_int_eq(stmt->return_stmt.expr->type, CAST_EXPR);
+    ck_assert_int_eq(stmt->return_stmt.expr->type, CAST_SIMPLE_EXPR);
 }
+END_TEST
 
 START_TEST(test_parser_return)
 {
@@ -370,7 +371,7 @@ START_TEST(test_parser_return)
     ck_assert_int_eq(list_size(&func->fun_declaration.compound_stmt->compound_stmt.stmts), 1);
     cast_node_t *ret = list_entry_grab(&func->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
     ck_assert_int_eq(ret->type, CAST_RETURN_STMT);
-    ck_assert_int_eq(ret->return_stmt.expr->type, CAST_EXPR);
+    ck_assert_int_eq(ret->return_stmt.expr->type, CAST_NUMBER);
 
     list_for_each_entry(tok, tokens, list) {
         list_del(&tok->list);

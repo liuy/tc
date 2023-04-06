@@ -167,44 +167,23 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             traverse_cast(node->if_stmt.if_stmt, symtab);
             traverse_cast(node->if_stmt.else_stmt, symtab);
             break;
-        case CAST_EXPR: {
-            cast_node_t *relational_expr;
-            list_for_each_entry(relational_expr, &node->expr.relationals, list) {
-                traverse_cast(relational_expr, symtab);
-            }
-            break;
-            }
+        case CAST_EXPR:
         case CAST_RELATIONAL_EXPR:
-            traverse_cast(node->relational_expr.left, symtab);
-            traverse_cast(node->relational_expr.right, symtab);
+        case CAST_SIMPLE_EXPR:
+        case CAST_TERM:
+            traverse_cast(node->expr.op.left, symtab);
+            traverse_cast(node->expr.op.right, symtab);
             break;
-        case CAST_SIMPLE_EXPR: {
-            cast_node_t *term;
-            list_for_each_entry(term, &node->simple_expr.terms, list) {
-                traverse_cast(term, symtab);
-            }
-            break;
-        }
-        case CAST_TERM: {
-            cast_node_t *factor;
-            list_for_each_entry(factor, &node->term.factors, list) {
-                traverse_cast(factor, symtab);
-            }
+        case CAST_IDENTIFIER: {
+            symbol_t *s = symbol_table_lookup(symtab, node->expr.identifier, 1);
+            if (!s)
+                panic("‘%s’ undeclared (first use in %s function)\n",
+                      node->expr.identifier, symtab->name);
+            tc_debug(0, "Identifier: %s\n", node->expr.identifier);
             break;
         }
-        case CAST_FACTOR:
-            if (node->factor.identifier) {
-                symbol_t *s = symbol_table_lookup(symtab, node->factor.identifier, 1);
-                if (!s)
-                    panic("‘%s’ undeclared (first use in %s function)\n",
-                          node->factor.identifier, symtab->name);
-                tc_debug(0, "Factor identifier: %s\n", node->factor.identifier);
-            } else if (node->factor.expr) {
-                traverse_cast(node->factor.expr, symtab);
-            } else {
-                tc_debug(0, "Factor number: %d\n", node->factor.num);
-            }
-            break;
+        case CAST_NUMBER:
+            tc_debug(0, "Number: %d\n", node->expr.num);
         default:
             break;
     }
