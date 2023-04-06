@@ -1,12 +1,37 @@
 #include <stdlib.h>
 #include <check.h>
 #include "../tc.h"
-#include "../list.h"
 
 static void token_free(token_t *tok)
 {
     free(tok->lexeme);
     free(tok);
+}
+
+static int check_cmd(const char *command, const char *expected)
+{
+    char buffer[1024];
+    FILE *fp;
+
+    /* Open the command for reading. */
+    fp = popen(command, "r");
+    if (fp == NULL) {
+        printf("Failed to run command %s\n", command );
+        return -1;
+    }
+
+    /* Read the output a line at a time - output it. */
+    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+        if (strstr(buffer, expected) != NULL) {
+            /* Expected output is found, close the pipe and return 1 */
+            pclose(fp);
+            return 1;
+        }
+    }
+
+    /* Expected output not found, return 0 */
+    pclose(fp);
+    return 0;
 }
 
 /**********************************************************************
@@ -229,7 +254,6 @@ START_TEST(test_lex_strings_and_chars)
 }
 END_TEST
 
-
 START_TEST(test_lex_whitespaces_and_comments)
 {
     char *input = "/* This is a comment */ int main()\n {\n \treturn 0;\n } \
@@ -301,6 +325,108 @@ Suite *lexer_suite(void)
 /**********************************************************************
  * Parser tests
  **********************************************************************/
+START_TEST(test_parser_wrong_assign)
+{
+    int ck = check_cmd("./tc -s 'int main(){1 = x;}' 2>&1", "Identifier expected, but got 1");
+    ck_assert_int_eq(ck, 1);
+}
+END_TEST
+
+START_TEST(test_parser_if_while_stmt)
+{
+    char *prog = "int main(){if(1) while(0) return 0; else return 1;}";
+    struct list_head *tokens = lex(prog);
+    cast_node_t* root = parse(tokens);
+
+    ck_assert_ptr_ne(root, NULL);
+    ck_assert_int_eq(root->type, CAST_PROGRAM);
+    ck_assert_int_eq(list_size(&root->program.declarations), 1);
+
+    cast_node_t *d = list_entry_grab(&root->program.declarations, cast_node_t, list);
+    ck_assert_int_eq(d->type, CAST_FUN_DECLARATION);
+    ck_assert_int_eq(list_size(&d->fun_declaration.compound_stmt->compound_stmt.stmts), 1);
+    cast_node_t *s = list_entry_grab(&d->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+    ck_assert_int_eq(s->type, CAST_IF_STMT);
+    ck_assert_int_eq(s->if_stmt.expr->type, CAST_NUMBER);
+    ck_assert_int_eq(s->if_stmt.expr->expr.num, 1);
+    ck_assert_int_eq(s->if_stmt.if_stmt->type, CAST_WHILE_STMT);
+    ck_assert_int_eq(s->if_stmt.if_stmt->while_stmt.expr->type, CAST_NUMBER);
+    ck_assert_int_eq(s->if_stmt.if_stmt->while_stmt.expr->expr.num, 0);
+    ck_assert_int_eq(s->if_stmt.if_stmt->while_stmt.stmt->type, CAST_RETURN_STMT);
+    ck_assert_int_eq(s->if_stmt.if_stmt->while_stmt.stmt->return_stmt.expr->type, CAST_NUMBER);
+    ck_assert_int_eq(s->if_stmt.if_stmt->while_stmt.stmt->return_stmt.expr->expr.num, 0);
+    ck_assert_int_eq(s->if_stmt.else_stmt->type, CAST_RETURN_STMT);
+    ck_assert_int_eq(s->if_stmt.else_stmt->return_stmt.expr->type, CAST_NUMBER);
+    ck_assert_int_eq(s->if_stmt.else_stmt->return_stmt.expr->expr.num, 1);
+}
+END_TEST
+
+START_TEST(test_parser_expr)
+{
+   char *prog = "int x, y; int main(){x = 1; y = 1 + x; x = 1*2 + 1; y = 1 * (1+y); return x;}";
+   struct list_head *tokens = lex(prog);
+   cast_node_t* root = parse(tokens);
+
+   ck_assert_ptr_ne(root, NULL);
+   ck_assert_int_eq(root->type, CAST_PROGRAM);
+   ck_assert_int_eq(list_size(&root->program.declarations), 2);
+
+   cast_node_t *d = list_entry_grab(&root->program.declarations, cast_node_t, list);
+   d = list_entry_grab(&root->program.declarations, cast_node_t, list);
+   ck_assert_int_eq(d->type, CAST_FUN_DECLARATION);
+
+   // Check the first statement x = 1
+   cast_node_t *stmt = list_entry_grab(&d->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+   ck_assert_int_eq(stmt->type, CAST_ASSIGN_STMT);
+   ck_assert_str_eq(stmt->assign_stmt.identifier, "x");
+   ck_assert_int_eq(stmt->assign_stmt.expr->type, CAST_NUMBER);
+   ck_assert_int_eq(stmt->assign_stmt.expr->expr.num, 1);
+   // Check the second statement y = 1 + x
+   stmt = list_entry_grab(&d->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+   ck_assert_int_eq(stmt->type, CAST_ASSIGN_STMT);
+   ck_assert_str_eq(stmt->assign_stmt.identifier, "y");
+   ck_assert_int_eq(stmt->assign_stmt.expr->type, CAST_SIMPLE_EXPR);
+   ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.type, TOK_OPERATOR_ADD);
+   ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->type, CAST_NUMBER);
+   ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->expr.num, 1);
+   ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.right->type, CAST_IDENTIFIER);
+   ck_assert_str_eq(stmt->assign_stmt.expr->expr.op.right->expr.identifier, "x");
+    // Check the third statement x = 1*2 + 1;
+    stmt = list_entry_grab(&d->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+    ck_assert_int_eq(stmt->type, CAST_ASSIGN_STMT);
+    ck_assert_str_eq(stmt->assign_stmt.identifier, "x");
+    ck_assert_int_eq(stmt->assign_stmt.expr->type, CAST_SIMPLE_EXPR);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.type, TOK_OPERATOR_ADD);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->type, CAST_TERM);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->expr.op.type, TOK_OPERATOR_MUL);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->expr.op.left->type, CAST_NUMBER);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->expr.op.left->expr.num, 1);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->expr.op.right->type, CAST_NUMBER);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->expr.op.right->expr.num, 2);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.right->type, CAST_NUMBER);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.right->expr.num, 1);
+    // Check the fourth statement y = 1 * (1+y);
+    stmt = list_entry_grab(&d->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+    ck_assert_int_eq(stmt->type, CAST_ASSIGN_STMT);
+    ck_assert_str_eq(stmt->assign_stmt.identifier, "y");
+    ck_assert_int_eq(stmt->assign_stmt.expr->type, CAST_TERM);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.type, TOK_OPERATOR_MUL);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->type, CAST_NUMBER);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.left->expr.num, 1);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.right->type, CAST_SIMPLE_EXPR);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.right->expr.op.type, TOK_OPERATOR_ADD);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.right->expr.op.left->type, CAST_NUMBER);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.right->expr.op.left->expr.num, 1);
+    ck_assert_int_eq(stmt->assign_stmt.expr->expr.op.right->expr.op.right->type, CAST_IDENTIFIER);
+    ck_assert_str_eq(stmt->assign_stmt.expr->expr.op.right->expr.op.right->expr.identifier, "y");
+    // Check the fifth statement return x;
+    stmt = list_entry_grab(&d->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+    ck_assert_int_eq(stmt->type, CAST_RETURN_STMT);
+    ck_assert_int_eq(stmt->return_stmt.expr->type, CAST_IDENTIFIER);
+    ck_assert_str_eq(stmt->return_stmt.expr->expr.identifier, "x");
+}
+END_TEST
+
 START_TEST(test_parser_empty_stmt)
 {
     char *prog = ";int y;;int add(){;;};;int main(){;int x;;x = 2;y = 2;return x;};";
@@ -321,9 +447,10 @@ END_TEST
 
 START_TEST(test_parser_fun_declaration)
 {
-    char *prog = "int add(int x, int y){return x + y;}";
+    char *prog = "int add(int x, int y){return 0;}";
     struct list_head *tokens = lex(prog);
     cast_node_t* root = parse(tokens);
+    token_t *tok;
 
     ck_assert_ptr_ne(root, NULL);
     ck_assert_int_eq(root->type, CAST_PROGRAM);
@@ -346,32 +473,47 @@ START_TEST(test_parser_fun_declaration)
     ck_assert_int_eq(list_size(&func->fun_declaration.compound_stmt->compound_stmt.stmts), 1);
     cast_node_t *stmt = list_entry_grab(&func->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
     ck_assert_int_eq(stmt->type, CAST_RETURN_STMT);
-    ck_assert_int_eq(stmt->return_stmt.expr->type, CAST_SIMPLE_EXPR);
+    ck_assert_int_eq(stmt->return_stmt.expr->type, CAST_NUMBER);
+    ck_assert_int_eq(stmt->return_stmt.expr->expr.num, 0);
+
+    list_for_each_entry(tok, tokens, list) {
+        list_del(&tok->list);
+        token_free(tok);
+    }
 }
 END_TEST
 
-START_TEST(test_parser_return)
+START_TEST(test_parser_declaration)
 {
-    char *prog = "int main()\n{\n\treturn 0;\n}";
+    char *prog = "int x, y;int z; int main(){}";
     struct list_head *tokens = lex(prog);
     token_t *tok;
     cast_node_t* root = parse(tokens);
 
     ck_assert_ptr_ne(root, NULL);
     ck_assert_int_eq(root->type, CAST_PROGRAM);
-    ck_assert_int_eq(list_size(&root->program.declarations), 1);
+    ck_assert_int_eq(list_size(&root->program.declarations), 3);
 
-    cast_node_t *func = list_entry_grab(&root->program.declarations, cast_node_t, list);
-    ck_assert_int_eq(func->type, CAST_FUN_DECLARATION);
-    ck_assert_int_eq(func->fun_declaration.type, TOK_KEYWORD_INT);
-    ck_assert_str_eq(func->fun_declaration.identifier, "main");
-    ck_assert_ptr_eq(func->fun_declaration.param_list, NULL);
-    ck_assert_ptr_ne(func->fun_declaration.compound_stmt, NULL);
-    ck_assert_int_eq(func->fun_declaration.compound_stmt->type, CAST_COMPOUND_STMT);
-    ck_assert_int_eq(list_size(&func->fun_declaration.compound_stmt->compound_stmt.stmts), 1);
-    cast_node_t *ret = list_entry_grab(&func->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
-    ck_assert_int_eq(ret->type, CAST_RETURN_STMT);
-    ck_assert_int_eq(ret->return_stmt.expr->type, CAST_NUMBER);
+    cast_node_t *d = list_entry_grab(&root->program.declarations, cast_node_t, list);
+    ck_assert_int_eq(d->type, CAST_VAR_DECLARATION);
+    ck_assert_int_eq(d->var_declaration.type, TOK_KEYWORD_INT);
+    cast_node_t *i = list_entry_grab(&d->var_declaration.var_declarator_list->var_declarator_list.var_declarators, cast_node_t, list);
+    ck_assert_str_eq(i->var_declarator.identifier, "x");
+    i = list_entry_grab(&d->var_declaration.var_declarator_list->var_declarator_list.var_declarators, cast_node_t, list);
+    ck_assert_str_eq(i->var_declarator.identifier, "y");
+
+    d = list_entry_grab(&root->program.declarations, cast_node_t, list);
+    ck_assert_int_eq(d->type, CAST_VAR_DECLARATION);
+    ck_assert_int_eq(d->var_declaration.type, TOK_KEYWORD_INT);
+    i = list_entry_grab(&d->var_declaration.var_declarator_list->var_declarator_list.var_declarators, cast_node_t, list);
+    ck_assert_str_eq(i->var_declarator.identifier, "z");
+
+    d = list_entry_grab(&root->program.declarations, cast_node_t, list);
+    ck_assert_int_eq(d->type, CAST_FUN_DECLARATION);
+    ck_assert_int_eq(d->fun_declaration.type, TOK_KEYWORD_INT);
+    ck_assert_str_eq(d->fun_declaration.identifier, "main");
+    ck_assert_ptr_eq(d->fun_declaration.param_list, NULL);
+    ck_assert_int_eq(list_size(&d->fun_declaration.compound_stmt->compound_stmt.stmts), 0);
 
     list_for_each_entry(tok, tokens, list) {
         list_del(&tok->list);
@@ -389,8 +531,11 @@ Suite *parser_suite(void)
 
     parser = tcase_create("Parser");
     tcase_add_test(parser, test_parser_empty_stmt);
-    tcase_add_test(parser, test_parser_return);
+    tcase_add_test(parser, test_parser_declaration);
     tcase_add_test(parser, test_parser_fun_declaration);
+    tcase_add_test(parser, test_parser_expr);
+    tcase_add_test(parser, test_parser_if_while_stmt);
+    tcase_add_test(parser, test_parser_wrong_assign);
     suite_add_tcase(s, parser);
 
     return s;
