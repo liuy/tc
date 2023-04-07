@@ -485,7 +485,7 @@ END_TEST
 
 START_TEST(test_parser_declaration)
 {
-    char *prog = "int x, y;int z; int main(){}";
+    char *prog = "int x, y;int z; int main(int x);";
     struct list_head *tokens = lex(prog);
     token_t *tok;
     cast_node_t* root = parse(tokens);
@@ -512,8 +512,12 @@ START_TEST(test_parser_declaration)
     ck_assert_int_eq(d->type, CAST_FUN_DECLARATION);
     ck_assert_int_eq(d->fun_declaration.type, TOK_KEYWORD_INT);
     ck_assert_str_eq(d->fun_declaration.identifier, "main");
-    ck_assert_ptr_eq(d->fun_declaration.param_list, NULL);
-    ck_assert_int_eq(list_size(&d->fun_declaration.compound_stmt->compound_stmt.stmts), 0);
+    ck_assert_int_eq(list_size(&d->fun_declaration.param_list->param_list.params), 1);
+    i = list_entry_grab(&d->fun_declaration.param_list->param_list.params, cast_node_t, list);
+    ck_assert_int_eq(i->type, CAST_PARAM);
+    ck_assert_int_eq(i->param.type, TOK_KEYWORD_INT);
+    ck_assert_str_eq(i->param.param_declarator->param_declarator.identifier, "x");
+    ck_assert_ptr_eq(d->fun_declaration.compound_stmt, NULL);
 
     list_for_each_entry(tok, tokens, list) {
         list_del(&tok->list);

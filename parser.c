@@ -444,7 +444,12 @@ static cast_node_t *parse_fun_declaration(void)
     if (current_tok->type != TOK_SEPARATOR_RIGHT_PARENTHESIS)
         panic("')' expected, but got %s\n", current_tok->lexeme);
     eat_current_tok(); // eat ')'
-    n->fun_declaration.compound_stmt = parse_compound_stmt();
+    if (current_tok->type == TOK_SEPARATOR_LEFT_BRACE)
+        n->fun_declaration.compound_stmt = parse_compound_stmt();
+    else if (current_tok->type == TOK_SEPARATOR_SEMICOLON)
+        eat_current_tok(); // eat ';'
+    else
+        panic("';' or '{' expected, but got %s\n", current_tok->lexeme);
     return n;
 }
 
