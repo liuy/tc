@@ -13,12 +13,15 @@
  * param-declarator = identifier [ "[" num "]" ] ;
  * type-specifier = "int" | "float" | "char" | "void" ;
  * compound-stmt = "{" { var-declaration | statement } "}" ;
- * statement = assign-stmt | compound-stmt | if-stmt | while-stmt | return-stmt ;
+ * statement = assign-stmt | compound-stmt | if-stmt | while-stmt | return-stmt | call-stmt ;
  * assign-stmt = var-declarator "=" expression ";" ;
  * if-stmt = "if" "(" expression ")" statement [ "else" statement ] ;
  * while-stmt = "while" "(" expression ")" statement ;
  * return-stmt = "return" [ expression ] ";" ;
- * expression = relational-expression { ("||" | "&&") relational-expression } ;
+ * call-stmt = call-expression ";" ;
+ * call-expression = identifier "(" [ args-list ] ")" ;
+ * args-list = expression { "," expression } ;
+ * expression = call-expression | relational-expression { ("||" | "&&") relational-expression } ;
  * relational-expression = simple-expression [ ("<" | "<= " | ">" | ">=" | "!=" | "==") simple-expression ] ;
  * simple-expression = term { ("+" | "-") term } ;
  * term = factor { ("*" | "/") factor } ;
@@ -270,10 +273,45 @@ static cast_node_t *parse_relational_expr(void)
     return n;
 }
 
-// expression = relational-expression { ("||" | "&&") relational-expression } ;
+// call-expression = identifier "(" [ args-list ] ")" ;
+static cast_node_t *parse_call_expression(void)
+{
+    cast_node_t *n = zalloc(sizeof(cast_node_t));
+
+    n->type = CAST_CALL_EXPR;
+    n->call_expr.identifier = strdup(current_tok->lexeme);
+
+    eat_current_tok(); // eat identifier
+    eat_current_tok(); // eat '('
+
+    // parse args-list
+    INIT_LIST_HEAD(&n->call_expr.args_list);
+    if (current_tok->type != TOK_SEPARATOR_RIGHT_PARENTHESIS) {
+        list_add_tail(&parse_expr()->list, &n->call_expr.args_list);
+        while (current_tok->type == TOK_SEPARATOR_COMMA) {
+            eat_current_tok(); // eat ','
+            list_add_tail(&parse_expr()->list, &n->call_expr.args_list);
+        }
+    }
+
+    if (current_tok->type != TOK_SEPARATOR_RIGHT_PARENTHESIS)
+        panic("')' expected, but got %s\n", current_tok->lexeme);
+    eat_current_tok(); // eat ')'
+
+    return n;
+}
+
+// expression = call-expression | relational-expression { ("||" | "&&") relational-expression } ;
 static cast_node_t *parse_expr(void)
 {
-    cast_node_t *n = parse_relational_expr();
+    cast_node_t *n;
+    token_t *next_tok = next_token(current_tok);
+
+    if (current_tok->type == TOK_IDENTIFIER &&
+        next_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS)
+        return parse_call_expression();
+
+    n = parse_relational_expr();
 
     while (current_tok->type == TOK_OPERATOR_LOGICAL_OR ||
            current_tok->type == TOK_OPERATOR_LOGICAL_AND) {
@@ -295,8 +333,6 @@ static cast_node_t *parse_assign_stmt(void)
     cast_node_t *n = zalloc(sizeof(cast_node_t));
 
     n->type = CAST_ASSIGN_STMT;
-    if (current_tok->type != TOK_IDENTIFIER)
-        panic("Identifier expected, but got %s\n", current_tok->lexeme);
     n->assign_stmt.identifier = strdup(current_tok->lexeme);
     eat_current_tok(); // eat identifier
 
@@ -367,23 +403,33 @@ static cast_node_t *parse_if_stmt(void)
     return n;
 }
 
-// stmt = if_stmt | compound_stmt | return_stmt | while_stmt | assign_stmt
+// call-stmt = call-expr ";"
+static cast_node_t *parse_call_stmt(void)
+{
+    cast_node_t *n = parse_call_expression();
+    eat_current_tok(); // eat ';'
+    return n;
+}
+
+// stmt = if_stmt | compound_stmt | return_stmt | while_stmt | assign_stmt | call_stmt
 static cast_node_t *parse_stmt(void)
 {
-    cast_node_t *n;
-
-    if (current_tok->type == TOK_KEYWORD_IF) {
-        n = parse_if_stmt();
-    } else if (current_tok->type == TOK_SEPARATOR_LEFT_BRACE) {
-        n = parse_compound_stmt();
-    } else if (current_tok->type == TOK_KEYWORD_RETURN) {
-        n = parse_return_stmt();
-    } else if (current_tok->type == TOK_KEYWORD_WHILE) {
-        n = parse_while_stmt();
-    } else {
-        n = parse_assign_stmt();
-    }
-    return n;
+    if (current_tok->type == TOK_KEYWORD_IF)
+        return parse_if_stmt();
+    else if (current_tok->type == TOK_KEYWORD_WHILE)
+        return parse_while_stmt();
+    else if (current_tok->type == TOK_KEYWORD_RETURN)
+        return parse_return_stmt();
+    else if (current_tok->type == TOK_IDENTIFIER) {
+        token_t *next_tok = next_token(current_tok);
+        if (next_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS)
+            return parse_call_stmt();
+        else
+            return parse_assign_stmt();
+    } else if (current_tok->type == TOK_SEPARATOR_LEFT_BRACE)
+        return parse_compound_stmt();
+    else
+        panic("unexpected token %s\n", current_tok->lexeme);
 }
 
 // compound_stmt = "{" {var_declaration | stmt} "}"

@@ -327,7 +327,7 @@ Suite *lexer_suite(void)
  **********************************************************************/
 START_TEST(test_parser_wrong_assign)
 {
-    int ck = check_cmd("./tc -s 'int main(){1 = x;}' 2>&1", "Identifier expected, but got 1");
+    int ck = check_cmd("./tc -s 'int main(){1 = x;}' 2>&1", "unexpected token 1");
     ck_assert_int_eq(ck, 1);
 }
 END_TEST

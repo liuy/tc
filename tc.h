@@ -156,6 +156,7 @@ enum cast_node_type {
     CAST_WHILE_STMT,
     CAST_RETURN_STMT,
     CAST_EXPR,
+    CAST_CALL_EXPR,
     CAST_RELATIONAL_EXPR,
     CAST_SIMPLE_EXPR,
     CAST_TERM,
@@ -227,6 +228,10 @@ typedef struct cast_node {
         struct {
             struct cast_node *expr;
         } return_stmt;
+        struct {
+            char *identifier;
+            struct list_head args_list;
+        } call_expr;
         union {
             struct {
                 enum token_type type;

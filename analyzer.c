@@ -164,6 +164,18 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             traverse_cast(node->if_stmt.if_stmt, symtab);
             traverse_cast(node->if_stmt.else_stmt, symtab);
             break;
+        case CAST_CALL_EXPR: {
+            symbol_t *s = symbol_table_lookup(symtab, node->call_expr.identifier, 1);
+            if (!s)
+                panic("‘%s’ undeclared (first use in this function)\n",
+                      node->call_expr.identifier);
+            tc_debug(0, "Call identifier: %s\n", node->call_expr.identifier);
+            cast_node_t *arg;
+            list_for_each_entry(arg, &node->call_expr.args_list, list) {
+                traverse_cast(arg, symtab);
+            }
+            break;
+        }
         case CAST_EXPR:
         case CAST_RELATIONAL_EXPR:
         case CAST_SIMPLE_EXPR:
