@@ -105,7 +105,7 @@ static size_t parse_operator(token_t *token, char *current_char)
                 token->type = TOK_OPERATOR_EQUAL;
                 current_char++;
             } else {
-                token->type = TOK_OPERATOR_ASSIGNMENT;
+                token->type = TOK_OPERATOR_ASSIGN;
             }
             break;
         case '%':
@@ -580,7 +580,7 @@ const char *token_type_to_str(enum token_type type)
             return "OPERATOR '++'";
         case TOK_OPERATOR_DEC:
             return "OPERATOR '--'";
-        case TOK_OPERATOR_ASSIGNMENT:
+        case TOK_OPERATOR_ASSIGN:
             return "OPERATOR '='";
         case TOK_OPERATOR_EQUAL:
             return "OPERATOR '=='";

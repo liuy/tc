@@ -66,7 +66,7 @@ enum token_type {
     TOK_OPERATOR_MOD, // "%"
     TOK_OPERATOR_INC, // "++"
     TOK_OPERATOR_DEC, // "--"
-    TOK_OPERATOR_ASSIGNMENT, // "="
+    TOK_OPERATOR_ASSIGN, // "="
     TOK_OPERATOR_EQUAL, // "=="
     TOK_OPERATOR_NOT_EQUAL, // "!="
     TOK_OPERATOR_LESS_THAN, // "<"
@@ -187,7 +187,7 @@ typedef struct cast_node {
         } var_declarator_list;
         struct {
             char *identifier;
-            int num;
+            struct cast_node *expr;
         } var_declarator;
         struct {
             enum token_type type;

@@ -88,11 +88,8 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_VAR_DECLARATOR:
-            if (node->var_declarator.num)
-                tc_debug(0,"Var Declarator: %s[%d]\n", node->var_declarator.identifier,
-                        node->var_declarator.num);
-            else
                 tc_debug(0,"Var Declarator: %s\n", node->var_declarator.identifier);
+                traverse_cast(node->var_declarator.expr, symtab);
             break;
         case CAST_FUN_DECLARATION: {
             symbol_t *s = zalloc(sizeof(symbol_t));
@@ -125,7 +122,7 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_PARAM_DECLARATOR: {
-            if (node->var_declarator.num)
+            if (node->param_declarator.num)
                 tc_debug(0,"Param Declarator: %s[%d]\n", node->param_declarator.identifier,
                         node->param_declarator.num);
             else
