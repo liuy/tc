@@ -465,11 +465,11 @@ START_TEST(test_parser_fun_declaration)
     cast_node_t *param = list_entry_grab(&func->fun_declaration.param_list->param_list.params, cast_node_t, list);
     ck_assert_int_eq(param->type, CAST_PARAM);
     ck_assert_int_eq(param->param.type, TOK_KEYWORD_INT);
-    ck_assert_str_eq(param->param.param_declarator->param_declarator.identifier, "x");
+    ck_assert_str_eq(param->param.identifier, "x");
     param = list_entry_grab(&func->fun_declaration.param_list->param_list.params, cast_node_t, list);
     ck_assert_int_eq(param->type, CAST_PARAM);
     ck_assert_int_eq(param->param.type, TOK_KEYWORD_INT);
-    ck_assert_str_eq(param->param.param_declarator->param_declarator.identifier, "y");
+    ck_assert_str_eq(param->param.identifier, "y");
     ck_assert_int_eq(list_size(&func->fun_declaration.compound_stmt->compound_stmt.stmts), 1);
     cast_node_t *stmt = list_entry_grab(&func->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
     ck_assert_int_eq(stmt->type, CAST_RETURN_STMT);
@@ -516,7 +516,7 @@ START_TEST(test_parser_declaration)
     i = list_entry_grab(&d->fun_declaration.param_list->param_list.params, cast_node_t, list);
     ck_assert_int_eq(i->type, CAST_PARAM);
     ck_assert_int_eq(i->param.type, TOK_KEYWORD_INT);
-    ck_assert_str_eq(i->param.param_declarator->param_declarator.identifier, "x");
+    ck_assert_str_eq(i->param.identifier, "x");
     ck_assert_ptr_eq(d->fun_declaration.compound_stmt, NULL);
 
     list_for_each_entry(tok, tokens, list) {

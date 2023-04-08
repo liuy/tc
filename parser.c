@@ -9,8 +9,7 @@
  * var-declarator-list = var-declarator { "," var-declarator } ;
  * var-declarator = identifier [ "=" expression ] ;
  * params-list = param { "," param } ;
- * param = type-specifier param-declarator ;
- * param-declarator = identifier [ "[" num "]" ] ;
+ * param = type-specifier identifier;
  * type-specifier = "int" | "float" | "char" | "void" ;
  * compound-stmt = "{" { var-declaration | statement } "}" ;
  * statement = assign-stmt | compound-stmt | if-stmt | while-stmt | return-stmt | call-stmt ;
@@ -128,32 +127,6 @@ static cast_node_t *parse_var_declaration(void)
     return n;
 }
 
-// param-declarator = identifier [ num ] ;
-static cast_node_t *parse_param_declarator(void)
-{
-    cast_node_t *n = zalloc(sizeof(cast_node_t));
-
-    if (current_tok->type != TOK_IDENTIFIER)
-        panic("identifier expected, but got %s\n", current_tok->lexeme);
-
-    n->type = CAST_PARAM_DECLARATOR;
-    n->param_declarator.identifier = strdup(current_tok->lexeme);
-
-    eat_current_tok(); // eat identifier
-    if (current_tok->type == TOK_SEPARATOR_LEFT_BRACKET) {
-        eat_current_tok(); // eat [
-        if (current_tok->type != TOK_CONSTANT_INT)
-            panic("expected TOK_CONSTANT_INT, but got %s\n", current_tok->lexeme);
-        n->param_declarator.num = atoi(current_tok->lexeme);
-        eat_current_tok(); // eat num
-        if (current_tok->type != TOK_SEPARATOR_RIGHT_BRACKET)
-            panic("']' expected, but got %s\n", current_tok->lexeme);
-        eat_current_tok(); // eat ]
-    }
-
-    return n;
-}
-
 // param = type_specifier param_declarator
 static cast_node_t *parse_param(void)
 {
@@ -165,7 +138,10 @@ static cast_node_t *parse_param(void)
     n->type = CAST_PARAM;
     n->param.type = current_tok->type;
     eat_current_tok(); // eat type specifier
-    n->param.param_declarator = parse_param_declarator();
+    if (current_tok->type != TOK_IDENTIFIER)
+        panic("identifier expected, but got %s\n", current_tok->lexeme);
+    n->param.identifier = strdup(current_tok->lexeme);
+    eat_current_tok(); // eat identifier
     return n;
 }
 

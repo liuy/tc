@@ -202,12 +202,8 @@ typedef struct cast_node {
         } param_list;
         struct {
             enum token_type type;
-            struct cast_node *param_declarator;
-        } param;
-        struct {
             char *identifier;
-            int num;
-        } param_declarator;
+        } param;
         struct {
             struct list_head stmts;
             symbol_table_t *symbol_table;

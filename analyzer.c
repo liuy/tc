@@ -115,18 +115,10 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
         }
         case CAST_PARAM: {
             symbol_t *s = zalloc(sizeof(symbol_t));
-            s->name = strdup(node->param.param_declarator->param_declarator.identifier);
+            s->name = strdup(node->param.identifier);
             s->type = node->param.type; //TODO: support array type
             symbol_table_add(symtab, s);
-            traverse_cast(node->param.param_declarator, symtab);
-            break;
-        }
-        case CAST_PARAM_DECLARATOR: {
-            if (node->param_declarator.num)
-                tc_debug(0,"Param Declarator: %s[%d]\n", node->param_declarator.identifier,
-                        node->param_declarator.num);
-            else
-                tc_debug(0, "Param Declarator: %s\n", node->param_declarator.identifier);
+            tc_debug(0, "Param: %s\n", node->param.identifier);
             break;
         }
         case CAST_COMPOUND_STMT: {
