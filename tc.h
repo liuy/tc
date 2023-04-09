@@ -109,6 +109,7 @@ typedef struct symbol {
     struct hlist_node list;
     char *name;
     enum token_type type;
+    int offset; // used by generator
 } symbol_t;
 
 /*
@@ -191,6 +192,7 @@ typedef struct cast_node {
         struct {
             enum token_type type;
             char *identifier;
+            int index;
         } param;
         struct {
             struct list_head stmts;
@@ -271,6 +273,7 @@ cast_node_t *parse(struct list_head *tokens);
 
 // Semantic Analysis
 void analyze_semantics(cast_node_t *ast);
+symbol_t *symbol_table_lookup(symbol_table_t *t, char *name, int upward);
 
 // Code Generation
 void generate_code(cast_node_t *ast);

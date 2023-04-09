@@ -93,12 +93,11 @@ static inline void generate_function_prologue(const char *name)
 
 static inline void generate_function_epilogue(void)
 {
-    strbuf_addstr(&ir, "\tmovq %rbp, %rsp\n");
-    strbuf_addstr(&ir, "\tpopq %rbp\n");
+    strbuf_addstr(&ir, "\tleave\n"); // restore stack pointer
     strbuf_addstr(&ir, "\tret\n");
 }
 
-static void generate_asm(cast_node_t *node)
+static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
 {
 	if (!node)
 		return;
@@ -107,7 +106,7 @@ static void generate_asm(cast_node_t *node)
         {
             cast_node_t *d;
             list_for_each_entry(d, &node->program.declarations, list) {
-                generate_asm(d);
+                generate_asm(d, symtab);
             }
         }
         break;
@@ -115,7 +114,7 @@ static void generate_asm(cast_node_t *node)
 		{
 			cast_node_t *var_declarator;
 			list_for_each_entry(var_declarator, &node->var_declarator_list.var_declarators, list) {
-				generate_asm(var_declarator);
+				generate_asm(var_declarator, symtab);
 			}
 		}
 		break;
@@ -123,7 +122,7 @@ static void generate_asm(cast_node_t *node)
 		{
 			cast_node_t *var_declarator;
 			list_for_each_entry(var_declarator, &node->var_declarator_list.var_declarators, list) {
-				generate_asm(var_declarator);
+				generate_asm(var_declarator, symtab);
 			}
 		}
 		break;
@@ -131,9 +130,9 @@ static void generate_asm(cast_node_t *node)
         // Generate function header
 		generate_function_prologue(node->fun_declaration.identifier);
 		// Generate function parameters
-		generate_asm(node->fun_declaration.param_list);
+		generate_asm(node->fun_declaration.param_list, node->fun_declaration.symbol_table);
         // Generate function body
-        generate_asm(node->fun_declaration.compound_stmt);
+        generate_asm(node->fun_declaration.compound_stmt, node->fun_declaration.symbol_table);
         // Add return statement if none exists
         if (node->fun_declaration.type == TOK_KEYWORD_VOID)
 			generate_function_epilogue();
@@ -141,68 +140,104 @@ static void generate_asm(cast_node_t *node)
 	case CAST_PARAM_LIST:
 		{
 			cast_node_t *param;
+			int idx = 0;
 			list_for_each_entry(param, &node->param_list.params, list) {
-				generate_asm(param);
+				param->param.index = ++idx;
+				generate_asm(param, symtab);
 			}
+            strbuf_addf(&ir, "\tsubq $%d, %%rsp\n", 4 * idx);
 		}
 		break;
 	case CAST_PARAM:
-		break;
+		// move parameter from register or stack to local stack frame
+    {
+        symbol_t *sym = symbol_table_lookup(symtab, node->param.identifier, 0);
+        sym->offset = -4 * node->param.index;
+        switch (node->param.index) {
+            case 1:
+                // 1st parameter is in %edi, move it to -4(%rbp)
+                strbuf_addstr(&ir, "\tmovl %edi, -4(%rbp)\n");
+                break;
+            case 2:
+                // 2nd parameter is in %esi, move it to -8(%rbp)
+                strbuf_addstr(&ir, "\tmovl %esi, -8(%rbp)\n");
+                break;
+            case 3:
+                // 3rd parameter is in %edx, move it to -12(%rbp)
+                strbuf_addstr(&ir, "\tmovl %edx, -12(%rbp)\n");
+            case 4:
+                // 4th parameter is in %ecx, move it to -16(%rbp)
+                strbuf_addstr(&ir, "\tmovl %ecx, -16(%rbp)\n");
+                break;
+            case 5:
+                // 5th parameter is in %r8d, move it to -20(%rbp)
+                strbuf_addstr(&ir, "\tmovl %r8d, -20(%rbp)\n");
+                break;
+            case 6:
+                // 6th parameter is in %r9d, move it to -24(%rbp)
+                strbuf_addstr(&ir, "\tmovl %r9d, -24(%rbp)\n");
+                break;
+            default:
+                panic("FIX ME:too many parameters\n");
+        }
+    }
+        break;
 	case CAST_COMPOUND_STMT:
 		{
             cast_node_t *s;
 			list_for_each_entry(s, &node->compound_stmt.stmts, list) {
-                generate_asm(s);
+                generate_asm(s, symtab);
             }
         }
 		break;
     case CAST_RETURN_STMT:
 		// Generate return value
-		generate_asm(node->return_stmt.expr);
+		generate_asm(node->return_stmt.expr, symtab);
 		strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop return value
 		generate_function_epilogue();
 		break;
 	case CAST_CALL_EXPR:
-    {
-        // Generate code for function arguments
-        cast_node_t *arg;
-        int arg_count = list_size(&node->call_expr.args_list);
-        list_for_each_entry_reverse(arg, &node->call_expr.args_list, list) {
-            generate_asm(arg);
-            if (arg_count-- <= 6) {
-                // Pass the first six arguments in registers
-                switch (arg_count) {
-                    case 1:
-                        strbuf_addstr(&ir, "\tpopq %rdi\n");
-                        break;
-                    case 2:
-                        strbuf_addstr(&ir, "\tpopq %rsi\n");
-                        break;
-                    case 3:
-                        strbuf_addstr(&ir, "\tpopq %rdx\n");
-                        break;
-                    case 4:
-                        strbuf_addstr(&ir, "\tpopq %rcx\n");
-                        break;
-                    case 5:
-                        strbuf_addstr(&ir, "\tpopq %r8\n");
-                        break;
-                    case 6:
-                        strbuf_addstr(&ir, "\tpopq %r9\n");
-                        break;
-                }
-            } // Additional arguments are already on the stack
+        {
+            // Generate code for function arguments
+            cast_node_t *arg;
+            int arg_count = list_size(&node->call_expr.args_list);
+			if (arg_count > 6)
+				panic("FIX ME:too many arguments\n");
+			// Evaluate arguments in reverse order
+            list_for_each_entry_reverse(arg, &node->call_expr.args_list, list) {
+                generate_asm(arg, symtab);
+            }
+			// Pass the first six arguments in registers
+			for (int i = 1; i <= arg_count; i++) {
+				switch (i) {
+				case 1:
+					strbuf_addstr(&ir, "\tpopq %rdi\n");
+					break;
+				case 2:
+					strbuf_addstr(&ir, "\tpopq %rsi\n");
+					break;
+				case 3:
+					strbuf_addstr(&ir, "\tpopq %rdx\n");
+					break;
+				case 4:
+					strbuf_addstr(&ir, "\tpopq %rcx\n");
+					break;
+				case 5:
+					strbuf_addstr(&ir, "\tpopq %r8\n");
+					break;
+				case 6:
+					strbuf_addstr(&ir, "\tpopq %r9\n");
+				default:
+					break;
+				}
+			}
+			// Call the function
+            strbuf_addf(&ir, "\tcall %s\n", node->call_expr.identifier);
+            // Pop arguments off the stack if there are more than 6
+            // Push the return value onto the stack
+            strbuf_addstr(&ir, "\tpushq %rax\n");
         }
-        // Call the function
-        strbuf_addf(&ir, "\tcall %s\n", node->call_expr.identifier);
-        // Pop arguments off the stack
-        if (arg_count > 6) {
-            strbuf_addf(&ir, "\taddq $%d, %%rsp\n", (arg_count - 6) * 8);
-        }
-        // Push the return value onto the stack
-        strbuf_addstr(&ir, "\tpushq %rax\n");
-    }
-    break;
+        break;
 	case CAST_IF_STMT:
 		break;
 	case CAST_EXPR:
@@ -218,11 +253,11 @@ static void generate_asm(cast_node_t *node)
 				op = "subl";
 			else
 				panic("Unknown operator type %d\n", node->expr.op.type);
-			generate_asm(node->expr.op.left);
-			generate_asm(node->expr.op.right);
-			strbuf_addstr(&ir, "\tpopq %rbx\n");		   // Pop right operand
+			generate_asm(node->expr.op.left, symtab);
+			generate_asm(node->expr.op.right, symtab);
+			strbuf_addstr(&ir, "\tpopq %rcx\n");		   // Pop right operand
 			strbuf_addstr(&ir, "\tpopq %rax\n");		   // Pop left operand
-			strbuf_addf(&ir, "\t%s %%ebx, %%eax\n", op); // operate left and right operands
+			strbuf_addf(&ir, "\t%s %%ecx, %%eax\n", op); // operate left and right operands
 			strbuf_addstr(&ir, "\tpushq %rax\n");		   // Push result
 		}
 		break;
@@ -235,19 +270,23 @@ static void generate_asm(cast_node_t *node)
 				op = "idivl";
 			else
 				panic("Unknown operator type %d\n", node->expr.op.type);
-			generate_asm(node->expr.op.left);
-			generate_asm(node->expr.op.right);
-			strbuf_addstr(&ir, "\tpopq %rbx\n");	// Pop right operand
+			generate_asm(node->expr.op.left, symtab);
+			generate_asm(node->expr.op.right, symtab);
+			strbuf_addstr(&ir, "\tpopq %rcx\n");	// Pop right operand
 			strbuf_addstr(&ir, "\tpopq %rax\n"); 	// Pop left operand
 			if (strcmp(op, "idivl") == 0)
 				strbuf_addstr(&ir, "\tcqo\n");	// Sign extend %rax to %rdx:%rax
-			strbuf_addf(&ir, "\t%s %%ebx\n", op); // operate left and right operands
+			strbuf_addf(&ir, "\t%s %%ecx\n", op); // operate left and right operands
 			strbuf_addstr(&ir, "\tpushq %rax\n");	// Push result
 		}
 		break;
 	case CAST_IDENTIFIER:
-		// Load the value of the identifier into %rax
-        strbuf_addstr(&ir, "\tpushq %rax\n"); // Push result onto stack
+        {
+            symbol_t *sym = symbol_table_lookup(symtab, node->expr.identifier, 0);
+            // Load the value of the identifier into %rax
+            strbuf_addf(&ir, "\tmovl %d(%%rbp), %%eax\n", sym->offset);
+            strbuf_addstr(&ir, "\tpushq %rax\n"); // Push result onto stack
+        }
 		break;
 	case CAST_NUMBER:
 		// Generate code for number and push it on the stack
@@ -271,7 +310,7 @@ static void generate_machine_code(char *code)
 
 void generate_code(cast_node_t *node)
 {
-	generate_asm(node);
+	generate_asm(node, node->program.symbol_table);
 	tc_debug(0, "\n%s", ir.buf);
 	generate_machine_code(ir.buf);
 	strbuf_release(&ir);

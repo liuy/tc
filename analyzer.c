@@ -12,8 +12,8 @@ static inline void symbol_table_destroy(symbol_table_t *t)
 }
 
 // Lookup symbol in symbol table backwards
-static symbol_t *symbol_table_lookup(symbol_table_t *t, char *name,
-                                     int upward)
+symbol_t *symbol_table_lookup(symbol_table_t *t, char *name,
+                              int upward)
 {
     int idx = symbol_table_hash(name);
     struct hlist_head *head = t->table + idx;
