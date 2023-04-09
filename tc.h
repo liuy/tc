@@ -7,18 +7,6 @@
 #include <string.h>
 #include "list.h"
 
-typedef struct code_generator {
-    // TODO: Define code generator structure
-} code_generator_t;
-
-typedef struct optimization_pass {
-    // TODO: Define optimization pass structure
-} optimization_pass_t;
-
-typedef struct debug_info {
-    // TODO: Define debug info structure
-} debug_info_t;
-
 enum token_type {
     TOK_KEYWORD_AUTO, // auto
     TOK_KEYWORD_BREAK, // break
@@ -285,15 +273,13 @@ cast_node_t *parse(struct list_head *tokens);
 void analyze_semantics(cast_node_t *ast);
 
 // Code Generation
-void generate_code(cast_node_t *ast, code_generator_t *code_generator);
+void generate_code(cast_node_t *ast);
 
 // Optimization
-void optimize_code(code_generator_t *code_generator, optimization_pass_t*
-		   optimization_pass);
+void optimize_code();
 
 // Debugging
-void debug_code(code_generator_t *code_generator, debug_info_t*
-		debug_info);
+void debug_code();
 
 // Reporting the error and exiting
 #define panic(fmt, ...) \

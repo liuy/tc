@@ -6,7 +6,7 @@ static symbol_table_t *symbol_table_create(void)
     return t;
 }
 
-static void symbol_table_destroy(symbol_table_t *t)
+static inline void symbol_table_destroy(symbol_table_t *t)
 {
     free(t); //TODO free all the table entries
 }

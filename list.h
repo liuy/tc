@@ -73,6 +73,18 @@ static inline int list_linked(const struct list_node *node)
 						   typeof(*LOCAL(n)),	\
 						   member))
 
+#define list_for_each_entry_reverse(pos, head, member)			\
+    for (typeof(pos) LOCAL(n) = (pos = list_entry((head)->n.prev,	\
+                              typeof(*pos),	\
+                              member),		\
+                     list_entry(pos->member.prev,	\
+                        typeof(*pos),		\
+                        member));		\
+         &pos->member != &(head)->n;				\
+         pos = LOCAL(n), LOCAL(n) = list_entry(LOCAL(n)->member.prev, \
+                           typeof(*LOCAL(n)),	\
+                           member))
+
 static inline void __list_add(struct list_node *one,
                               struct list_node *prev,
                               struct list_node *next)

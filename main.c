@@ -17,17 +17,6 @@
 
 #include "tc.h"
 
-// Code Generation
-void generate_code(cast_node_t *ast, code_generator_t *code_generator) {};
-
-// Optimization
-void optimize_code(code_generator_t *code_generator, optimization_pass_t*
-		   optimization_pass) {};
-
-// Debugging
-void debug_code(code_generator_t *code_generator, debug_info_t*
-		debug_info) {};
-
 static char *read_file(const char *filename)
 {
     FILE *file = fopen(filename, "r");
@@ -90,28 +79,20 @@ int main(int argc, char **argv)
     analyze_semantics(ast);
 
     // Generate code
-    code_generator_t *code_generator =
-	    (code_generator_t*) malloc(sizeof(code_generator_t));
-    generate_code(ast, code_generator);
+    generate_code(ast);
 
     // Optimize code
-    optimization_pass_t *optimization_pass =
-	    (optimization_pass_t*) malloc(sizeof(optimization_pass_t));
-    optimize_code(code_generator, optimization_pass);
+    //optimize_code();
 
     // Debug code
-    debug_info_t *debug_info = (debug_info_t*) malloc(sizeof(debug_info_t));
-    debug_code(code_generator, debug_info);
+    //debug_code(code_generator, debug_info);
 
     // Close the input file
     if (need_free)
-	free(source_code);
+        free(source_code);
     // Free memory
     // free(tokens);
     // free(ast);
-    free(code_generator);
-    free(optimization_pass);
-    free(debug_info);
 
     // Exit program
     return 0;
