@@ -117,8 +117,10 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             cast_node_t *var_declarator;
             int idx = 0, var_count = list_size(&node->var_declarator_list.var_declarators);
             // allocate stack space for local variables
-            strbuf_addf(&ir, "\tsubq $%d, %%rsp\n",  var_count * 4);
-            list_for_each_entry(var_declarator, &node->var_declarator_list.var_declarators, list) {
+            if (strcmp(symtab->name, "global") && (var_count > 0))
+                strbuf_addf(&ir, "\tsubq $%d, %%rsp\n", var_count * 4);
+            list_for_each_entry(var_declarator, &node->var_declarator_list.var_declarators, list)
+            {
                 var_declarator->var_declarator.index = ++idx;
                 generate_asm(var_declarator, symtab);
             }
@@ -221,6 +223,17 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             list_for_each_entry(s, &node->compound_stmt.stmts, list) {
                 generate_asm(s, symtab);
             }
+        }
+        break;
+    case CAST_ASSIGN_STMT:
+        {
+            symbol_t *sym = symbol_table_lookup(symtab, node->assign_stmt.identifier, 1);
+            generate_asm(node->assign_stmt.expr, symtab);
+            strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop value of expression
+            if (sym->is_global)
+                strbuf_addf(&ir, "\tmovl %%eax, %s(%%rip)\n", sym->name); // Store value in variable
+            else
+                strbuf_addf(&ir, "\tmovl %%eax, %d(%%rbp)\n", sym->offset); // Store value in variable
         }
         break;
     case CAST_RETURN_STMT:
