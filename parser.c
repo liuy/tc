@@ -24,7 +24,8 @@
  * relational-expression = simple-expression [ ("<" | "<= " | ">" | ">=" | "!=" | "==") simple-expression ] ;
  * simple-expression = term { ("+" | "-") term } ;
  * term = factor { ("*" | "/") factor } ;
- * factor = identifier | num | "(" expression ")" ;
+ * factor = identifier | num | "(" expression ")" | string ;
+ * string = '"' { character } '"' ;
  * identifier = letter { letter | digit } ;
  * letter = "a" | "b" | ... | "z" | "A" | "B" | ... | "Z" | "_" ;
  * digit = "0" | "1" | ... | "9" ;
@@ -181,6 +182,11 @@ static cast_node_t *parse_factor(void)
         if (current_tok->type != TOK_SEPARATOR_RIGHT_PARENTHESIS)
             panic("')' expected, but got %s\n", current_tok->lexeme);
         eat_current_tok(); // eat ")"
+    } else if (current_tok->type == TOK_CONSTANT_STRING) {
+        n = zalloc(sizeof(cast_node_t));
+        n->type = CAST_STRING;
+        n->expr.string = strdup(current_tok->lexeme);
+        eat_current_tok(); // eat string
     } else {
         panic("Expected identifier, number, or '(', but got %s\n", current_tok->lexeme);
     }

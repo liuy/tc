@@ -71,6 +71,48 @@ static void strbuf_addf(struct strbuf *sb, const char *fmt, ...)
 	strbuf_setlen(sb, sb->len + len);
 }
 
+static void strbuf_vinsertf(struct strbuf *sb, size_t pos, const char *fmt, va_list ap)
+{
+    int len, len2;
+    char save;
+    va_list cp;
+
+    if (pos > sb->len)
+        panic("`pos' is too far after the end of the buffer");
+    va_copy(cp, ap);
+    len = vsnprintf(sb->buf + sb->len, 0, fmt, cp);
+    va_end(cp);
+    if (len < 0)
+        panic("your vsnprintf is broken (returned %d)", len);
+    if (!len)
+        return; /* nothing to do */
+    strbuf_grow(sb, len);
+    memmove(sb->buf + pos + len, sb->buf + pos, sb->len - pos);
+    /* vsnprintf() will append a NUL, overwriting one of our characters */
+    save = sb->buf[pos + len];
+    len2 = vsnprintf(sb->buf + pos, len + 1, fmt, ap);
+    sb->buf[pos + len] = save;
+    if (len2 != len)
+        panic("your vsnprintf is broken (returns inconsistent lengths)");
+    strbuf_setlen(sb, sb->len + len);
+}
+
+static inline void strbuf_insertf(struct strbuf *sb, size_t pos, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    strbuf_vinsertf(sb, pos, fmt, ap);
+    va_end(ap);
+}
+
+static inline void strbuf_head_addf(struct strbuf *sb, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    strbuf_vinsertf(sb, 0, fmt, ap);
+    va_end(ap);
+}
+
 static inline void strbuf_release(struct strbuf *sb)
 {
 	free(sb->buf);
@@ -167,7 +209,8 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             // Generate function body
             generate_asm(node->fun_declaration.compound_stmt, node->fun_declaration.symbol_table);
             // Add return statement if none exists
-            if (node->fun_declaration.type == TOK_KEYWORD_VOID)
+            cast_node_t *last = list_last_entry(&node->fun_declaration.compound_stmt->compound_stmt.stmts, cast_node_t, list);
+            if (last && last->type != CAST_RETURN_STMT)
                 generate_function_epilogue();
         }
         break;
@@ -277,6 +320,9 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
                         break;
                 }
             }
+            // we need to zero out %eax before calling a variadic function
+            // see https://stackoverflow.com/questions/6212665/why-is-eax-zeroed-before-a-call-to-printf
+            strbuf_addstr(&ir, "\tmovl $0, %eax\n");
             // Call the function
             strbuf_addf(&ir, "\tcall %s\n", node->call_expr.identifier);
             // Pop arguments off the stack if there are more than 6
@@ -341,6 +387,17 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         // Generate code for number and push it on the stack
         strbuf_addf(&ir, "\tmovl $%d, %%eax\n", node->expr.num);
         strbuf_addstr(&ir, "\tpushq %rax\n");
+        break;
+    case CAST_STRING:
+        {
+        // Generate code for string and push it on the stack
+        static int string_count = 0;
+        strbuf_head_addf(&ir, "\t.section\t.rodata\n.LC%d:\n\t.string %s\n",
+                         string_count, node->expr.string);
+        strbuf_addf(&ir, "\tleaq .LC%d(%%rip), %%rax\n", string_count);
+        strbuf_addf(&ir, "\tpushq %%rax\n");
+        string_count++;
+        }
         break;
     default:
         break;

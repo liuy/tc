@@ -153,7 +153,8 @@ enum cast_node_type {
     CAST_TERM,
     CAST_FACTOR,
     CAST_IDENTIFIER,
-    CAST_NUMBER
+    CAST_NUMBER,
+    CAST_STRING
 };
 
 // C Abstract Syntax Tree (CAST) node
@@ -229,6 +230,7 @@ typedef struct cast_node {
             } op;
             int num;
             char *identifier;
+            char *string;
             struct cast_node *expr;
         } expr;
     };

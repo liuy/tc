@@ -43,6 +43,10 @@ static inline void INIT_LIST_NODE(struct list_node *list)
 #define list_first_entry(head, type, member) \
 	list_entry((head)->n.next, type, member)
 
+#define list_last_entry(head, type, member) \
+    (list_empty(head) ? NULL : \
+    list_entry((head)->n.prev, type, member))
+
 static inline int list_empty(const struct list_head *head)
 {
 	return head->n.next == &head->n;
