@@ -111,6 +111,7 @@ typedef struct symbol {
     enum token_type type;
     int offset; // used by generator
     int is_global; // used by generator
+    int arg_count; // used by generator
 } symbol_t;
 
 /*
@@ -179,6 +180,7 @@ typedef struct cast_node {
         struct {
             char *identifier;
             struct cast_node *expr;
+            int index;
         } var_declarator;
         struct {
             enum token_type type;
