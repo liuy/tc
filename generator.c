@@ -81,9 +81,8 @@ static struct strbuf ir = STRBUF_INIT;
 
 static inline void generate_function_prologue(const char *name)
 {
-    strbuf_addstr(&ir, "\t.globl ");
-    strbuf_addstr(&ir, name);
-    strbuf_addstr(&ir, "\n");
+    strbuf_addf(&ir, "\n\t.globl %s\n", name);
+    strbuf_addstr(&ir, "\t.text\n");
 	strbuf_addf(&ir, "\t.type %s, @function\n", name);
     strbuf_addstr(&ir, name);
     strbuf_addstr(&ir, ":\n");
@@ -110,13 +109,8 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             }
         }
         break;
-	case CAST_VAR_DECLARATOR:
-		{
-			cast_node_t *var_declarator;
-			list_for_each_entry(var_declarator, &node->var_declarator_list.var_declarators, list) {
-				generate_asm(var_declarator, symtab);
-			}
-		}
+	case CAST_VAR_DECLARATION:
+        generate_asm(node->var_declaration.var_declarator_list, symtab);
 		break;
 	case CAST_VAR_DECLARATOR_LIST:
 		{
@@ -126,6 +120,26 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
 			}
 		}
 		break;
+    case CAST_VAR_DECLARATOR:
+        {
+            symbol_t *sym = symbol_table_lookup(symtab, node->var_declarator.identifier, 0);
+            if (sym->is_global) {
+                strbuf_addf(&ir, "\n\t.globl %s\n", sym->name);
+                strbuf_addf(&ir, "\t.align 4\n");
+                strbuf_addf(&ir, "\t.type %s, @object\n", sym->name);
+                strbuf_addf(&ir, "\t.size %s, 4\n", sym->name);
+                if (node->var_declarator.expr) {
+                    strbuf_addstr(&ir, "\t.data\n");
+                    strbuf_addf(&ir, "%s:\n", sym->name);
+                    strbuf_addf(&ir, "\t.long %d\n", node->var_declarator.expr->expr.num);
+                } else {
+                    strbuf_addstr(&ir, "\t.bss\n");
+                    strbuf_addf(&ir, "%s:\n", sym->name);
+                    strbuf_addf(&ir, "\t.zero 4\n");
+                }
+             }
+       }
+       break;
 	case CAST_FUN_DECLARATION:
         // Generate function header
 		generate_function_prologue(node->fun_declaration.identifier);
@@ -255,9 +269,9 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
 				panic("Unknown operator type %d\n", node->expr.op.type);
 			generate_asm(node->expr.op.left, symtab);
 			generate_asm(node->expr.op.right, symtab);
-			strbuf_addstr(&ir, "\tpopq %rcx\n");		   // Pop right operand
+			strbuf_addstr(&ir, "\tpopq %r10\n");		   // Pop right operand
 			strbuf_addstr(&ir, "\tpopq %rax\n");		   // Pop left operand
-			strbuf_addf(&ir, "\t%s %%ecx, %%eax\n", op); // operate left and right operands
+			strbuf_addf(&ir, "\t%s %%r10d, %%eax\n", op); // operate left and right operands
 			strbuf_addstr(&ir, "\tpushq %rax\n");		   // Push result
 		}
 		break;
@@ -272,19 +286,22 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
 				panic("Unknown operator type %d\n", node->expr.op.type);
 			generate_asm(node->expr.op.left, symtab);
 			generate_asm(node->expr.op.right, symtab);
-			strbuf_addstr(&ir, "\tpopq %rcx\n");	// Pop right operand
+			strbuf_addstr(&ir, "\tpopq %r10\n");	// Pop right operand
 			strbuf_addstr(&ir, "\tpopq %rax\n"); 	// Pop left operand
 			if (strcmp(op, "idivl") == 0)
 				strbuf_addstr(&ir, "\tcqo\n");	// Sign extend %rax to %rdx:%rax
-			strbuf_addf(&ir, "\t%s %%ecx\n", op); // operate left and right operands
+			strbuf_addf(&ir, "\t%s %%r10d\n", op); // operate left and right operands
 			strbuf_addstr(&ir, "\tpushq %rax\n");	// Push result
 		}
 		break;
 	case CAST_IDENTIFIER:
         {
-            symbol_t *sym = symbol_table_lookup(symtab, node->expr.identifier, 0);
+            symbol_t *sym = symbol_table_lookup(symtab, node->expr.identifier, 1);
             // Load the value of the identifier into %rax
-            strbuf_addf(&ir, "\tmovl %d(%%rbp), %%eax\n", sym->offset);
+            if (sym->is_global)
+                strbuf_addf(&ir, "\tmovl %s(%%rip), %%eax\n", sym->name);
+            else
+                strbuf_addf(&ir, "\tmovl %d(%%rbp), %%eax\n", sym->offset);
             strbuf_addstr(&ir, "\tpushq %rax\n"); // Push result onto stack
         }
 		break;

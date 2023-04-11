@@ -17,4 +17,4 @@ check: test_tc
 	test/test_tc
 
 clean:
-	rm -f tc test/test_tc
+	rm -f tc test/test_tc a.tc

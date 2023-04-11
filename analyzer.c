@@ -51,6 +51,7 @@ static void handle_var_declaration(cast_node_t *node, symbol_table_t *st)
         symbol_t *s = zalloc(sizeof(symbol_t));
         s->name = strdup(var->var_declarator.identifier);
         s->type = node->var_declaration.type;
+        s->is_global = strcmp(st->name, "global") == 0;
         symbol_table_add(st, s);
     }
 }

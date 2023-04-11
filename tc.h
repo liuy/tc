@@ -110,6 +110,7 @@ typedef struct symbol {
     char *name;
     enum token_type type;
     int offset; // used by generator
+    int is_global; // used by generator
 } symbol_t;
 
 /*
