@@ -171,19 +171,19 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
     case CAST_VAR_DECLARATOR:
         {
             symbol_t *sym = symbol_table_lookup(symtab, node->var_declarator.identifier, 0);
-            if (sym->index == 0) {
+            if (sym->index == 0) {// global variable
                 strbuf_addf(&ir, "\n\t.globl %s\n", sym->name);
-                strbuf_addf(&ir, "\t.align 4\n");
-                strbuf_addf(&ir, "\t.type %s, @object\n", sym->name);
-                strbuf_addf(&ir, "\t.size %s, 4\n", sym->name);
+                strbuf_addf(&ir, "\t.align 4\n"); // align to 4 bytes
+                strbuf_addf(&ir, "\t.type %s, @object\n", sym->name); // @object is for data
+                strbuf_addf(&ir, "\t.size %s, 4\n", sym->name); // size in bytes
                 if (node->var_declarator.expr) {
-                    strbuf_addstr(&ir, "\t.data\n");
+                    strbuf_addstr(&ir, "\t.data\n"); // data section
                     strbuf_addf(&ir, "%s:\n", sym->name);
                     strbuf_addf(&ir, "\t.long %d\n", node->var_declarator.expr->expr.num);
                 } else {
-                    strbuf_addstr(&ir, "\t.bss\n");
+                    strbuf_addstr(&ir, "\t.bss\n"); // uninitialized data section
                     strbuf_addf(&ir, "%s:\n", sym->name);
-                    strbuf_addf(&ir, "\t.zero 4\n");
+                    strbuf_addf(&ir, "\t.zero 4\n"); // zero out 4 bytes
                 }
             } else {
                 tc_debug(0, "local variable %s, index %d\n", sym->name, sym->index);
@@ -329,10 +329,67 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         }
         break;
     case CAST_IF_STMT:
+        {
+            static int label_count = 0;
+            int else_label = label_count++;
+            int end_label = label_count++;
+            // Generate code for condition
+            generate_asm(node->if_stmt.expr, symtab);
+            strbuf_addstr(&ir, "\tpopq %rax\n");       // Pop condition value
+            strbuf_addstr(&ir, "\ttest %rax, %rax\n"); // Test condition
+            // Generate code for then branch
+            strbuf_addf(&ir, "\tje L%d\n", else_label); // Jump to else branch if condition is false
+            generate_asm(node->if_stmt.if_stmt, symtab);
+            strbuf_addf(&ir, "\tjmp L%d\n", end_label); // Jump to end of if statement
+            // Generate code for else branch
+            strbuf_addf(&ir, "L%d:\n", else_label);
+            generate_asm(node->if_stmt.else_stmt, symtab);
+            // Generate code for end of if statement
+            strbuf_addf(&ir, "L%d:\n", end_label);
+        }
         break;
     case CAST_EXPR:
         break;
-    case CAST_RELATIONAL_EXPR:
+    case CAST_RELATIONAL_EXPR: {
+        // Generate code for left and right operands
+        generate_asm(node->expr.op.left, symtab);
+        generate_asm(node->expr.op.right, symtab);
+        strbuf_addstr(&ir, "\tpopq %rcx\n"); // Pop right operand
+        strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop left operand
+        // Compare left and right operands
+        switch (node->expr.op.type) {
+        case TOK_OPERATOR_LESS_THAN:
+            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n"); // Compare left and right operands
+            strbuf_addstr(&ir, "\tsetl %al\n"); // Set %al to 1 if left operand is less than right operand
+            break;
+        case TOK_OPERATOR_GREATER_THAN:
+            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tsetg %al\n"); // Set %al to 1 if left operand is greater than right operand
+            break;
+        case TOK_OPERATOR_LESS_THAN_OR_EQUAL_TO:
+            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tsetle %al\n"); // Set %al to 1 if left operand is less than or equal to right operand
+            break;
+        case TOK_OPERATOR_GREATER_THAN_OR_EQUAL_TO:
+            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tsetge %al\n"); // Set %al to 1 if left operand is greater than or equal to right operand
+            break;
+        case TOK_OPERATOR_EQUAL:
+            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tsete %al\n"); // Set %al to 1 if left operand is equal to right operand
+            break;
+        case TOK_OPERATOR_NOT_EQUAL:
+            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tsetne %al\n"); // Set %al to 1 if left operand is not equal to right operand
+            break;
+        default:
+            panic("Invalid relational operator\n");
+            break;
+        }
+        // Push result of comparison onto stack
+        strbuf_addstr(&ir, "\tmovzbl %al, %eax\n"); // Zero extend %al to %eax
+        strbuf_addstr(&ir, "\tpushq %rax\n");
+    }
         break;
     case CAST_SIMPLE_EXPR:
         {
