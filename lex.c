@@ -385,7 +385,7 @@ struct list_head *lex(char *source_code)
 
     char *current_char = source_code;
 
-    tc_debug(0, "\n%s\n", source_code);
+    tc_debug(1, "\n%s\n", source_code);
     while (*current_char != '\0') {
         // Skip whitespace
         if (isspace(*current_char)) {
@@ -475,12 +475,10 @@ struct list_head *lex(char *source_code)
     token->lexeme = NULL;
     list_add_tail(&token->list, tokens_list);
 
-    #ifdef TC_DEBUG
     token_t *t;
     list_for_each_entry(t, tokens_list, list) {
-        tc_debug(1, "[%s]\n", token_type_to_str(t->type));
+        tc_debug(0, "[%s]\n", token_type_to_str(t->type));
     }
-    #endif
 
     return tokens_list;
 }

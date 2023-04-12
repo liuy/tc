@@ -119,6 +119,12 @@ static inline void strbuf_release(struct strbuf *sb)
 	memset(sb, 0, sizeof(*sb));
 }
 
+// stack offset of a variable or parameter
+static inline int to_offset(int index)
+{
+    return index * -4;
+}
+
 static struct strbuf ir = STRBUF_INIT;
 
 static inline void generate_function_prologue(const char *name)
@@ -157,13 +163,7 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
     case CAST_VAR_DECLARATOR_LIST:
         {
             cast_node_t *var_declarator;
-            int idx = 0, var_count = list_size(&node->var_declarator_list.var_declarators);
-            // allocate stack space for local variables
-            if (strcmp(symtab->name, "global") && (var_count > 0))
-                strbuf_addf(&ir, "\tsubq $%d, %%rsp\n", var_count * 4);
-            list_for_each_entry(var_declarator, &node->var_declarator_list.var_declarators, list)
-            {
-                var_declarator->var_declarator.index = ++idx;
+            list_for_each_entry(var_declarator, &node->var_declarator_list.var_declarators, list) {
                 generate_asm(var_declarator, symtab);
             }
         }
@@ -171,7 +171,7 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
     case CAST_VAR_DECLARATOR:
         {
             symbol_t *sym = symbol_table_lookup(symtab, node->var_declarator.identifier, 0);
-            if (sym->is_global) {
+            if (sym->index == 0) {
                 strbuf_addf(&ir, "\n\t.globl %s\n", sym->name);
                 strbuf_addf(&ir, "\t.align 4\n");
                 strbuf_addf(&ir, "\t.type %s, @object\n", sym->name);
@@ -186,13 +186,12 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
                     strbuf_addf(&ir, "\t.zero 4\n");
                 }
             } else {
-                symbol_t *fun = symbol_table_lookup(symtab, symtab->name, 1);
-                sym->offset = (fun->arg_count + node->var_declarator.index) * -4;
+                tc_debug(0, "local variable %s, index %d\n", sym->name, sym->index);
                 if (node->var_declarator.expr) {
                     // for local variables, we support real expressions.
                     generate_asm(node->var_declarator.expr, symtab);
                     strbuf_addstr(&ir, "\tpopq %rax\n"); //get the value of the expression
-                    strbuf_addf(&ir, "\tmovl %%eax, %d(%%rbp)\n", sym->offset); // initialize the variable
+                    strbuf_addf(&ir, "\tmovl %%eax, %d(%%rbp)\n", to_offset(sym->index)); // initialize the variable
                 }
             }
         }
@@ -200,10 +199,13 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
     case CAST_FUN_DECLARATION:
         {
             symbol_t *sym = symbol_table_lookup(symtab, node->fun_declaration.identifier, 0);
-            if (node->fun_declaration.param_list)
-                sym->arg_count = list_size(&node->fun_declaration.param_list->param_list.params);
             // Generate function header
             generate_function_prologue(node->fun_declaration.identifier);
+            // Allocate space for local variables and round up to 16 bytes to keep stack 16 bytes-aligned
+            // see https://stackoverflow.com/questions/49391001/why-does-the-x86-64-amd64-system-v-abi-mandate-a-16-byte-stack-alignment
+            #define ROUND_UP_16(x) (((x) + 15) & ~15)
+            if (sym->var_count+sym->arg_count > 0)
+                strbuf_addf(&ir, "\tsubq $%d, %%rsp\n", ROUND_UP_16((sym->var_count+sym->arg_count) * 4));
             // Generate function parameters
             generate_asm(node->fun_declaration.param_list, node->fun_declaration.symbol_table);
             // Generate function body
@@ -217,11 +219,7 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
     case CAST_PARAM_LIST:
         {
             cast_node_t *param;
-            int idx = 0, arg_count = list_size(&node->param_list.params);
-            // Allocate space for parameters on the stack
-            strbuf_addf(&ir, "\tsubq $%d, %%rsp\n", arg_count * 4);
             list_for_each_entry(param, &node->param_list.params, list) {
-                param->param.index = ++idx;
                 generate_asm(param, symtab);
             }
         }
@@ -230,8 +228,8 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         // move parameter from register or stack to local stack frame
         {
             symbol_t *sym = symbol_table_lookup(symtab, node->param.identifier, 0);
-            sym->offset = -4 * node->param.index;
-            switch (node->param.index) {
+            tc_debug(0, "local param %s, index %d\n", sym->name, sym->index);
+            switch (sym->index) {
                 case 1:
                     // 1st parameter is in %edi, move it to -4(%rbp)
                     strbuf_addstr(&ir, "\tmovl %edi, -4(%rbp)\n");
@@ -273,10 +271,10 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             symbol_t *sym = symbol_table_lookup(symtab, node->assign_stmt.identifier, 1);
             generate_asm(node->assign_stmt.expr, symtab);
             strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop value of expression
-            if (sym->is_global)
+            if (sym->index == 0)
                 strbuf_addf(&ir, "\tmovl %%eax, %s(%%rip)\n", sym->name); // Store value in variable
             else
-                strbuf_addf(&ir, "\tmovl %%eax, %d(%%rbp)\n", sym->offset); // Store value in variable
+                strbuf_addf(&ir, "\tmovl %%eax, %d(%%rbp)\n", to_offset(sym->index)); // Store value in variable
         }
         break;
     case CAST_RETURN_STMT:
@@ -376,10 +374,10 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         {
             symbol_t *sym = symbol_table_lookup(symtab, node->expr.identifier, 1);
             // Load the value of the identifier into %rax
-            if (sym->is_global)
+            if (sym->index == 0)
                 strbuf_addf(&ir, "\tmovl %s(%%rip), %%eax\n", sym->name);
             else
-                strbuf_addf(&ir, "\tmovl %d(%%rbp), %%eax\n", sym->offset);
+                strbuf_addf(&ir, "\tmovl %d(%%rbp), %%eax\n", to_offset(sym->index));
             strbuf_addstr(&ir, "\tpushq %rax\n"); // Push result onto stack
         }
         break;
@@ -417,7 +415,7 @@ static void generate_machine_code(char *code)
 void generate_code(cast_node_t *node)
 {
 	generate_asm(node, node->program.symbol_table);
-	tc_debug(0, "\n%s", ir.buf);
+	tc_debug(1, "\n%s", ir.buf);
 	generate_machine_code(ir.buf);
 	strbuf_release(&ir);
 }

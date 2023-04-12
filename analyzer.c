@@ -40,9 +40,8 @@ static void symbol_table_add(symbol_table_t *t, symbol_t *s)
     if (symbol_table_lookup(t, s->name, 0)) // just add to current scope
         panic("redeclaration of '%s'\n", s->name);
     hlist_add_head(&s->list, head);
-    tc_debug(1, "<%s> %s, %s\n", t->name, token_type_to_str(s->type), s->name);
+    tc_debug(0, "<%s> %s, %s\n", t->name, token_type_to_str(s->type), s->name);
 }
-
 
 static void handle_var_declaration(cast_node_t *node, symbol_table_t *st)
 {
@@ -51,7 +50,6 @@ static void handle_var_declaration(cast_node_t *node, symbol_table_t *st)
         symbol_t *s = zalloc(sizeof(symbol_t));
         s->name = strdup(var->var_declarator.identifier);
         s->type = node->var_declaration.type;
-        s->is_global = strcmp(st->name, "global") == 0;
         symbol_table_add(st, s);
     }
 }
@@ -77,10 +75,11 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             }
             break;
         }
-        case CAST_VAR_DECLARATION:
+        case CAST_VAR_DECLARATION: {
             handle_var_declaration(node, symtab);
             traverse_cast(node->var_declaration.var_declarator_list, symtab);
             break;
+        }
         case CAST_VAR_DECLARATOR_LIST: {
             cast_node_t *var_declarator;
             list_for_each_entry(var_declarator, &node->var_declarator_list.var_declarators, list) {
@@ -88,10 +87,17 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             }
             break;
         }
-        case CAST_VAR_DECLARATOR:
-                tc_debug(0,"Var Declarator: %s\n", node->var_declarator.identifier);
-                traverse_cast(node->var_declarator.expr, symtab);
+        case CAST_VAR_DECLARATOR: {
+            symbol_t *s = symbol_table_lookup(symtab, node->var_declarator.identifier, 0);
+            symbol_t *fun = symbol_table_lookup(symtab, symtab->name, 1);
+            if (fun) { // local variable
+                fun->var_count++;
+                s->index = fun->arg_count + fun->var_count;
+            }
+            tc_debug(0, "Var Declarator: %s\n", node->var_declarator.identifier);
+            traverse_cast(node->var_declarator.expr, symtab);
             break;
+        }
         case CAST_FUN_DECLARATION: {
             symbol_t *s = zalloc(sizeof(symbol_t));
             s->name = strdup(node->fun_declaration.identifier);
@@ -118,6 +124,8 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             symbol_t *s = zalloc(sizeof(symbol_t));
             s->name = strdup(node->param.identifier);
             s->type = node->param.type; //TODO: support array type
+            symbol_t *fun = symbol_table_lookup(symtab, symtab->name, 1);
+            s->index = ++fun->arg_count;
             symbol_table_add(symtab, s);
             tc_debug(0, "Param: %s\n", node->param.identifier);
             break;

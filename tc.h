@@ -109,9 +109,11 @@ typedef struct symbol {
     struct hlist_node list;
     char *name;
     enum token_type type;
-    int offset; // used by generator
-    int is_global; // used by generator
+    // variable specific
+    int index; // for stack index, 0 means global
+    // functioin specific
     int arg_count; // used by generator
+    int var_count; // used by generator
 } symbol_t;
 
 /*
@@ -181,7 +183,6 @@ typedef struct cast_node {
         struct {
             char *identifier;
             struct cast_node *expr;
-            int index;
         } var_declarator;
         struct {
             enum token_type type;
@@ -196,7 +197,6 @@ typedef struct cast_node {
         struct {
             enum token_type type;
             char *identifier;
-            int index;
         } param;
         struct {
             struct list_head stmts;
