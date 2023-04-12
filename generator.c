@@ -375,7 +375,25 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             strbuf_addf(&ir, ".L%d:\n", end_label);
         }
         break;
-    case CAST_EXPR:
+    case CAST_LOGICAL_EXPR: {
+        generate_asm(node->expr.op.left, symtab);
+        generate_asm(node->expr.op.right, symtab);
+        strbuf_addstr(&ir, "\tpopq %rcx\n"); // Pop right operand
+        strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop left operand
+        // Compare left and right operands
+        switch (node->expr.op.type) {
+        case TOK_OPERATOR_LOGICAL_AND:
+            strbuf_addstr(&ir, "\tandq %rcx, %rax\n"); // AND left and right operands
+            break;
+        case TOK_OPERATOR_LOGICAL_OR:
+            strbuf_addstr(&ir, "\torq %rcx, %rax\n"); // OR left and right operands
+            break;
+        default:
+            panic("Invalid logical operator");
+        }
+        // Push result onto the stack
+        strbuf_addstr(&ir, "\tpushq %rax\n");
+    }
         break;
     case CAST_RELATIONAL_EXPR: {
         // Generate code for left and right operands

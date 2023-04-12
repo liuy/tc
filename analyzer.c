@@ -181,7 +181,7 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             }
             break;
         }
-        case CAST_EXPR:
+        case CAST_LOGICAL_EXPR:
         case CAST_RELATIONAL_EXPR:
         case CAST_SIMPLE_EXPR:
         case CAST_TERM:

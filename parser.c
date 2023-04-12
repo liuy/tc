@@ -300,7 +300,7 @@ static cast_node_t *parse_expr(void)
     while (current_tok->type == TOK_OPERATOR_LOGICAL_OR ||
            current_tok->type == TOK_OPERATOR_LOGICAL_AND) {
         cast_node_t *op_node = zalloc(sizeof(cast_node_t));
-        op_node->type = CAST_EXPR;
+        op_node->type = CAST_LOGICAL_EXPR;
         op_node->expr.op.type = current_tok->type;
         op_node->expr.op.left = n;
         eat_current_tok(); // eat "||" or "&&"
