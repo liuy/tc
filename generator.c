@@ -440,7 +440,8 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             char *op;
             if (node->expr.op.type == TOK_OPERATOR_MUL)
                 op = "imull";
-            else if (node->expr.op.type == TOK_OPERATOR_DIV)
+            else if (node->expr.op.type == TOK_OPERATOR_DIV ||
+                     node->expr.op.type == TOK_OPERATOR_MOD)
                 op = "idivl";
             else
                 panic("Unknown operator type %d\n", node->expr.op.type);
@@ -451,7 +452,9 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             if (strcmp(op, "idivl") == 0)
                 strbuf_addstr(&ir, "\tcqo\n");	// Sign extend %rax to %rdx:%rax
             strbuf_addf(&ir, "\t%s %%r10d\n", op); // operate left and right operands
-            strbuf_addstr(&ir, "\tpushq %rax\n");	// Push result
+            if (node->expr.op.type == TOK_OPERATOR_MOD)
+                strbuf_addstr(&ir, "\tmovl %edx, %eax\n"); // Move remainder into %eax
+            strbuf_addstr(&ir, "\tpushq %rax\n"); // Push result
         }
         break;
     case CAST_IDENTIFIER:

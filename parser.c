@@ -23,7 +23,7 @@
  * expression = relational-expression { ("||" | "&&") relational-expression } ;
  * relational-expression = simple-expression [ ("<" | "<= " | ">" | ">=" | "!=" | "==") simple-expression ] ;
  * simple-expression = term { ("+" | "-") term } ;
- * term = factor { ("*" | "/") factor } ;
+ * term = factor { ("*" | "/" | "%") factor } ;
  * factor = identifier | num | "(" expression ")" | string  | call-expression ;
  * string = '"' { character } '"' ;
  * identifier = letter { letter | digit } ;
@@ -206,12 +206,13 @@ static cast_node_t *parse_term(void)
     cast_node_t *n = parse_factor();
 
     while (current_tok->type == TOK_OPERATOR_MUL ||
-           current_tok->type == TOK_OPERATOR_DIV) {
+           current_tok->type == TOK_OPERATOR_DIV ||
+           current_tok->type == TOK_OPERATOR_MOD) {
         cast_node_t *op_node = zalloc(sizeof(cast_node_t));
         op_node->type = CAST_TERM;
         op_node->expr.op.type = current_tok->type;
         op_node->expr.op.left = n;
-        eat_current_tok(); // eat "*" or "/"
+        eat_current_tok(); // eat "*" or "/" or "%"
         op_node->expr.op.right = parse_factor();
         n = op_node;
     }
