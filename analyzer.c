@@ -165,6 +165,9 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             traverse_cast(node->if_stmt.if_stmt, symtab);
             traverse_cast(node->if_stmt.else_stmt, symtab);
             break;
+        case CAST_CALL_STMT:
+            traverse_cast(node->call_stmt.expr, symtab);
+            break;
         case CAST_CALL_EXPR: {
             // linker will check if the function is defined
             // symbol_t *s = symbol_table_lookup(symtab, node->call_expr.identifier, 1);

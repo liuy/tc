@@ -388,7 +388,9 @@ static cast_node_t *parse_if_stmt(void)
 // call-stmt = call-expr ";"
 static cast_node_t *parse_call_stmt(void)
 {
-    cast_node_t *n = parse_call_expression();
+    cast_node_t *n = zalloc(sizeof(cast_node_t));
+    n->type = CAST_CALL_STMT;
+    n->call_stmt.expr = parse_call_expression();
     eat_current_tok(); // eat ';'
     return n;
 }

@@ -301,6 +301,10 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         strbuf_addf(&ir, ".L%d:\n", end_label);
         }
         break;
+    case CAST_CALL_STMT:
+        generate_asm(node->call_stmt.expr, symtab);
+        strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop return value to make sure stack is 16-byte aligned
+        break;
     case CAST_CALL_EXPR:
         {
             // Generate code for function arguments
