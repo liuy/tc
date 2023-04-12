@@ -1,9 +1,12 @@
+SHELL := /bin/bash
+
 ifndef debug
 	debug := 2
 endif
 
 CFLAGS = -Wall -std=gnu99 -g -DTC_DEBUG=$(debug)
 CHECK_FLAGS = -lcheck -lm -pthread -lsubunit -lrt
+LIST := $(patsubst test/%,%,$(shell find test -name '*.c' -not -name 'test_main.c'))
 
 all: tc
 
@@ -18,3 +21,11 @@ check: test_tc
 
 clean:
 	rm -f tc test/test_tc a.tc
+
+run:
+	@if [ -z "$(file)" ]; then \
+		echo "Please specify file in the $(LIST). E.g, make run file=prime.c"; \
+	else \
+		make clean;make debug=1;./tc test/$(file); \
+		echo "Program Output:";time ./a.tc; \
+	fi
