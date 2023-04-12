@@ -20,11 +20,11 @@
  * call-stmt = call-expression ";" ;
  * call-expression = identifier "(" [ args-list ] ")" ;
  * args-list = expression { "," expression } ;
- * expression = call-expression | relational-expression { ("||" | "&&") relational-expression } ;
+ * expression = relational-expression { ("||" | "&&") relational-expression } ;
  * relational-expression = simple-expression [ ("<" | "<= " | ">" | ">=" | "!=" | "==") simple-expression ] ;
  * simple-expression = term { ("+" | "-") term } ;
  * term = factor { ("*" | "/") factor } ;
- * factor = identifier | num | "(" expression ")" | string ;
+ * factor = identifier | num | "(" expression ")" | string  | call-expression ;
  * string = '"' { character } '"' ;
  * identifier = letter { letter | digit } ;
  * letter = "a" | "b" | ... | "z" | "A" | "B" | ... | "Z" | "_" ;
@@ -38,6 +38,7 @@ static cast_node_t *parse_stmt(void);
 static cast_node_t *parse_assign_stmt(void);
 static cast_node_t *parse_compound_stmt(void);
 static cast_node_t *parse_expr(void);
+static cast_node_t *parse_call_expression(void);
 
 static inline token_t *next_token(token_t *tok)
 {
@@ -161,16 +162,21 @@ static cast_node_t *parse_param_list(void)
     return n;
 }
 
-// factor = num | '(' expr ')' | identifier
+// factor = num | '(' expr ')' | identifier | call_expr | string
 static cast_node_t *parse_factor(void)
 {
     cast_node_t *n = NULL;
 
     if (current_tok->type == TOK_IDENTIFIER) {
-        n = zalloc(sizeof(cast_node_t));
-        n->type = CAST_IDENTIFIER;
-        n->expr.identifier = strdup(current_tok->lexeme);
-        eat_current_tok(); // eat identifier
+        token_t *ntok = next_token(current_tok);
+        if (ntok->type == TOK_SEPARATOR_LEFT_PARENTHESIS) {
+            return parse_call_expression();
+        } else {
+            n = zalloc(sizeof(cast_node_t));
+            n->type = CAST_IDENTIFIER;
+            n->expr.identifier = strdup(current_tok->lexeme);
+            eat_current_tok(); // eat identifier
+        }
     } else if (current_tok->type == TOK_CONSTANT_INT) {
         n = zalloc(sizeof(cast_node_t));
         n->type = CAST_NUMBER;
@@ -188,7 +194,7 @@ static cast_node_t *parse_factor(void)
         n->expr.string = strdup(current_tok->lexeme);
         eat_current_tok(); // eat string
     } else {
-        panic("Expected identifier, number, or '(', but got %s\n", current_tok->lexeme);
+        panic("Expected string, identifier, number, or '(', but got %s\n", current_tok->lexeme);
     }
 
     return n;
@@ -283,15 +289,10 @@ static cast_node_t *parse_call_expression(void)
     return n;
 }
 
-// expression = call-expression | relational-expression { ("||" | "&&") relational-expression } ;
+// expression = relational-expression { ("||" | "&&") relational-expression } ;
 static cast_node_t *parse_expr(void)
 {
     cast_node_t *n;
-    token_t *next_tok = next_token(current_tok);
-
-    if (current_tok->type == TOK_IDENTIFIER &&
-        next_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS)
-        return parse_call_expression();
 
     n = parse_relational_expr();
 
