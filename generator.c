@@ -134,6 +134,7 @@ static inline void generate_function_prologue(const char *name)
 	strbuf_addf(&ir, "\t.type %s, @function\n", name);
     strbuf_addstr(&ir, name);
     strbuf_addstr(&ir, ":\n");
+    strbuf_addstr(&ir, "\tendbr64\n");
     strbuf_addstr(&ir, "\tpushq %rbp\n");
     strbuf_addstr(&ir, "\tmovq %rsp, %rbp\n");
 }
@@ -146,6 +147,7 @@ static inline void generate_function_epilogue(void)
 
 static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
 {
+    static int label_count = 0;
     if (!node)
         return;
     switch (node->type) {
@@ -283,6 +285,22 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop return value
         generate_function_epilogue();
         break;
+    case CAST_WHILE_STMT: {
+        int start_label = label_count++;
+        int end_label = label_count++;
+        // Generate code for condition
+        strbuf_addf(&ir, ".L%d:\n", start_label);
+        generate_asm(node->while_stmt.expr, symtab);
+        strbuf_addstr(&ir, "\tpopq %rax\n");       // Pop condition result
+        strbuf_addstr(&ir, "\ttest %rax, %rax\n"); // Test condition
+        strbuf_addf(&ir, "\tje .L%d\n", end_label); // Jump to end of while loop if condition is false
+        // Generate code for body
+        generate_asm(node->while_stmt.stmt, symtab);
+        strbuf_addf(&ir, "\tjmp .L%d\n", start_label); // Jump to start of while loop
+        // Generate code for end of while loop
+        strbuf_addf(&ir, ".L%d:\n", end_label);
+        }
+        break;
     case CAST_CALL_EXPR:
         {
             // Generate code for function arguments
@@ -330,7 +348,6 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         break;
     case CAST_IF_STMT:
         {
-            static int label_count = 0;
             int else_label = label_count++;
             int end_label = label_count++;
             // Generate code for condition
@@ -338,14 +355,14 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
             strbuf_addstr(&ir, "\tpopq %rax\n");       // Pop condition value
             strbuf_addstr(&ir, "\ttest %rax, %rax\n"); // Test condition
             // Generate code for then branch
-            strbuf_addf(&ir, "\tje L%d\n", else_label); // Jump to else branch if condition is false
+            strbuf_addf(&ir, "\tje .L%d\n", else_label); // Jump to else branch if condition is false
             generate_asm(node->if_stmt.if_stmt, symtab);
-            strbuf_addf(&ir, "\tjmp L%d\n", end_label); // Jump to end of if statement
+            strbuf_addf(&ir, "\tjmp .L%d\n", end_label); // Jump to end of if statement
             // Generate code for else branch
-            strbuf_addf(&ir, "L%d:\n", else_label);
+            strbuf_addf(&ir, ".L%d:\n", else_label);
             generate_asm(node->if_stmt.else_stmt, symtab);
             // Generate code for end of if statement
-            strbuf_addf(&ir, "L%d:\n", end_label);
+            strbuf_addf(&ir, ".L%d:\n", end_label);
         }
         break;
     case CAST_EXPR:
