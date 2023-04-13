@@ -1,12 +1,5 @@
 #include "tc.h"
 
-struct strbuf {
-	size_t alloc;
-	size_t len;
-	int eof;
-	char *buf;
-};
-
 #define alloc_nr(x) (((x)+16)*3/2)
 
 #define ALLOC_GROW(x, nr, alloc) \
@@ -113,10 +106,23 @@ static inline void strbuf_head_addf(struct strbuf *sb, const char *fmt, ...)
     va_end(ap);
 }
 
-static inline void strbuf_release(struct strbuf *sb)
+void strbuf_splice(struct strbuf *sb, size_t pos, size_t len,
+                   const void *data, size_t dlen)
 {
-	free(sb->buf);
-	memset(sb, 0, sizeof(*sb));
+    if ((pos + len < pos))
+		panic("you want to use way too much memory");
+	if ((pos > sb->len))
+		panic("`pos' is too far after the end of the buffer");
+	if ((pos + len > sb->len))
+		panic("`pos + len' is too far after the end of the buffer");
+
+	if (dlen >= len)
+		strbuf_grow(sb, dlen - len);
+    memmove(sb->buf + pos + dlen,
+            sb->buf + pos + len,
+            sb->len - pos - len);
+    memcpy(sb->buf + pos, data, dlen);
+	strbuf_setlen(sb, sb->len + dlen - len);
 }
 
 // stack offset of a variable or parameter
@@ -481,19 +487,8 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
     return;
 }
 
-static void generate_machine_code(char *code)
-{
-	FILE *fp = fopen("a.s", "w");
-	fprintf(fp, "%s", code);
-	fclose(fp);
-	system("gcc -o a.tc a.s");
-	remove("a.s");
-}
-
-void generate_code(cast_node_t *node)
+struct strbuf *generate_code(cast_node_t *node)
 {
 	generate_asm(node, node->program.symbol_table);
-	tc_debug(1, "\n%s", ir.buf);
-	generate_machine_code(ir.buf);
-	strbuf_release(&ir);
+	return &ir;
 }

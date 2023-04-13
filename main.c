@@ -66,11 +66,13 @@ int main(int argc, char **argv)
     // Read the input file
     if (!source_code) {
         source_code = read_file(argv[optind]);
-	need_free = 1;
+        need_free = 1;
     }
 
     // Perform lexical analysis
     struct list_head *tokens_list = lex(source_code);
+    if (need_free)
+        free(source_code);
 
     // Perform syntax analysis
     cast_node_t *ast = parse(tokens_list);
@@ -79,17 +81,15 @@ int main(int argc, char **argv)
     analyze_semantics(ast);
 
     // Generate code
-    generate_code(ast);
+    struct strbuf *code = generate_code(ast);
 
     // Optimize code
-    //optimize_code();
+    optimize_code(code);
 
     // Debug code
     //debug_code(code_generator, debug_info);
 
-    // Close the input file
-    if (need_free)
-        free(source_code);
+    strbuf_release(code);
     // Free memory
     // free(tokens);
     // free(ast);

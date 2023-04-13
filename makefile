@@ -7,8 +7,8 @@ CHECK_FLAGS = -lcheck -lm -pthread -lsubunit -lrt
 
 all: tc
 
-tc: tc.h list.h main.c lex.c parser.c analyzer.c generator.c
-	gcc $(CFLAGS) -o tc main.c lex.c parser.c analyzer.c generator.c
+tc: tc.h list.h main.c lex.c parser.c analyzer.c generator.c optimizer.c
+	gcc $(CFLAGS) -o tc main.c lex.c parser.c analyzer.c generator.c optimizer.c
 
 test_tc: test/test_main.c lex.c parser.c
 	gcc -o test/test_tc test/test_main.c lex.c parser.c $(CHECK_FLAGS)

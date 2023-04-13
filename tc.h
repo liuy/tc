@@ -240,6 +240,13 @@ typedef struct cast_node {
     };
 } cast_node_t;
 
+struct strbuf {
+	size_t alloc;
+	size_t len;
+	int eof;
+	char *buf;
+};
+
 // Lexical Analysis and helpers in lex.c
 struct list_head *lex(char *source_code);
 const char *token_type_to_str(enum token_type type);
@@ -285,10 +292,29 @@ void analyze_semantics(cast_node_t *ast);
 symbol_t *symbol_table_lookup(symbol_table_t *t, char *name, int upward);
 
 // Code Generation
-void generate_code(cast_node_t *ast);
+struct strbuf *generate_code(cast_node_t *ast);
+void strbuf_splice(struct strbuf *sb, size_t pos, size_t len, const void *data, size_t dlen);
+static inline void strbuf_remove(struct strbuf *sb, size_t pos, size_t len)
+{
+	strbuf_splice(sb, pos, len, NULL, 0);
+}
+static inline void strbuf_release(struct strbuf *sb)
+{
+	free(sb->buf);
+	memset(sb, 0, sizeof(*sb));
+}
+// get position of matched 'str' in 'buf'
+static inline int strbuf_findstr(struct strbuf *buf, const char *str)
+{
+    char *p = strstr(buf->buf, str);
+    if (p)
+        return p - buf->buf;
+    return -1;
+}
+
 
 // Optimization
-void optimize_code();
+void optimize_code(struct strbuf *code);
 
 // Debugging
 void debug_code();
