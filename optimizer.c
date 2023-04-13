@@ -29,6 +29,14 @@ void optimize_code(struct strbuf *code)
             strbuf_splice(code, pos, strlen(str), new, strlen(new));
         }
     } while (pos != -1);
+    do {// merge double mov
+        char *str = ", %eax\n\tmovl %eax";
+        pos = strbuf_findstr(code, str);
+        if (pos != -1) {
+            tc_debug(0, "optimize[3] pos = %d\n", pos);
+            strbuf_remove(code, pos, strlen(str));
+        }
+    } while (pos != -1);
 	tc_debug(1, "\n%s", code->buf);
     generate_machine_code(code->buf);
 }
