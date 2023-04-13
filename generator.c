@@ -376,10 +376,10 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         }
         break;
     case CAST_LOGICAL_EXPR: {
-        generate_asm(node->expr.op.left, symtab);
         generate_asm(node->expr.op.right, symtab);
-        strbuf_addstr(&ir, "\tpopq %rcx\n"); // Pop right operand
+        generate_asm(node->expr.op.left, symtab);
         strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop left operand
+        strbuf_addstr(&ir, "\tpopq %rcx\n"); // Pop right operand
         // Compare left and right operands
         switch (node->expr.op.type) {
         case TOK_OPERATOR_LOGICAL_AND:
@@ -397,10 +397,10 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         break;
     case CAST_RELATIONAL_EXPR: {
         // Generate code for left and right operands
-        generate_asm(node->expr.op.left, symtab);
         generate_asm(node->expr.op.right, symtab);
-        strbuf_addstr(&ir, "\tpopq %rcx\n"); // Pop right operand
+        generate_asm(node->expr.op.left, symtab);
         strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop left operand
+        strbuf_addstr(&ir, "\tpopq %rcx\n"); // Pop right operand
         // Compare left and right operands
         switch (node->expr.op.type) {
         case TOK_OPERATOR_LESS_THAN:
@@ -445,10 +445,10 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
                 op = "subl";
             else
                 panic("Unknown operator type %d\n", node->expr.op.type);
-            generate_asm(node->expr.op.left, symtab);
             generate_asm(node->expr.op.right, symtab);
-            strbuf_addstr(&ir, "\tpopq %r10\n");		   // Pop right operand
+            generate_asm(node->expr.op.left, symtab);
             strbuf_addstr(&ir, "\tpopq %rax\n");		   // Pop left operand
+            strbuf_addstr(&ir, "\tpopq %r10\n");		   // Pop right operand
             strbuf_addf(&ir, "\t%s %%r10d, %%eax\n", op); // operate left and right operands
             strbuf_addstr(&ir, "\tpushq %rax\n");		   // Push result
         }
@@ -463,10 +463,10 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
                 op = "idivl";
             else
                 panic("Unknown operator type %d\n", node->expr.op.type);
-            generate_asm(node->expr.op.left, symtab);
             generate_asm(node->expr.op.right, symtab);
-            strbuf_addstr(&ir, "\tpopq %r10\n");	// Pop right operand
+            generate_asm(node->expr.op.left, symtab);
             strbuf_addstr(&ir, "\tpopq %rax\n"); 	// Pop left operand
+            strbuf_addstr(&ir, "\tpopq %r10\n");	// Pop right operand
             if (strcmp(op, "idivl") == 0)
                 strbuf_addstr(&ir, "\tcqo\n");	// Sign extend %rax to %rdx:%rax
             strbuf_addf(&ir, "\t%s %%r10d\n", op); // operate left and right operands
