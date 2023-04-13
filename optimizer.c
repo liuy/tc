@@ -16,8 +16,17 @@ void optimize_code(struct strbuf *code)
         char *str = "\tpushq %rax\n\tpopq %rax\n";
         pos = strbuf_findstr(code, str);
         if (pos != -1) {
-            tc_debug(0, "optimize pos = %d\n", pos);
+            tc_debug(0, "optimize[1] pos = %d\n", pos);
             strbuf_remove(code, pos, strlen(str));
+        }
+    } while (pos != -1);
+    do {// replace pushq/popq with movq
+        char *str = "\tpushq %rax\n\tpopq";
+        char *new = "\tmovq %rax,";
+        pos = strbuf_findstr(code, str);
+        if (pos != -1) {
+            tc_debug(0, "optimize[2] pos = %d\n", pos);
+            strbuf_splice(code, pos, strlen(str), new, strlen(new));
         }
     } while (pos != -1);
 	tc_debug(1, "\n%s", code->buf);
