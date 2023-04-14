@@ -34,6 +34,8 @@ void optimize_code(struct strbuf *code)
         pos = strbuf_findstr_pos(code, str, start);
         if (pos != -1) {
             int ipos = pos;
+            if (strncmp(code->buf + ipos - 1, ")", 1) == 0)
+                goto forward; // first oprand is a memory address, just skip
             while (!isspace(code->buf[ipos--]))
                 ; // skip first oprand of movl xxx, %eax
             while (!isspace(code->buf[--ipos]))
@@ -42,6 +44,7 @@ void optimize_code(struct strbuf *code)
                 tc_debug(0, "optimize[3] pos = %d\n", pos);
                 strbuf_remove(code, pos, strlen(str));
             }
+forward:
             start = pos + strlen(str);
         }
     } while (pos != -1);
