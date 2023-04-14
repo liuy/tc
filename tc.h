@@ -185,6 +185,7 @@ typedef struct cast_node {
         struct {
             enum token_type type;
             char *identifier;
+            int array_size;
             struct cast_node *expr;
         } var_declarator;
         struct {
@@ -207,6 +208,7 @@ typedef struct cast_node {
         } compound_stmt;
         struct {
             char *identifier;
+            struct cast_node *array_expr;
             struct cast_node *expr;
         } assign_stmt;
         struct {
@@ -235,7 +237,10 @@ typedef struct cast_node {
                 struct cast_node *right;
             } op;
             int num;
-            char *identifier;
+            struct {
+                char *identifier;
+                struct cast_node *array_expr;
+            };
             char *string;
             struct cast_node *expr;
         } expr;

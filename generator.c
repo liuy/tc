@@ -180,10 +180,12 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         {
             symbol_t *sym = symbol_table_lookup(symtab, node->var_declarator.identifier, 0);
             if (sym->index == 0) {// global variable
+                int size = node->var_declarator.array_size ? node->var_declarator.array_size : 1;
+                int align = 4 * (size > 8 ? 8 : size);
                 strbuf_addf(&ir, "\n\t.globl %s\n", sym->name);
-                strbuf_addf(&ir, "\t.align 4\n"); // align to 4 bytes
+                strbuf_addf(&ir, "\t.align %d\n", align); // align to at most 32 bytes
                 strbuf_addf(&ir, "\t.type %s, @object\n", sym->name); // @object is for data
-                strbuf_addf(&ir, "\t.size %s, 4\n", sym->name); // size in bytes
+                strbuf_addf(&ir, "\t.size %s, %d\n", sym->name, size * 4); // size in bytes
                 if (node->var_declarator.expr) {
                     strbuf_addstr(&ir, "\t.data\n"); // data section
                     strbuf_addf(&ir, "%s:\n", sym->name);
@@ -191,11 +193,11 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
                 } else {
                     strbuf_addstr(&ir, "\t.bss\n"); // uninitialized data section
                     strbuf_addf(&ir, "%s:\n", sym->name);
-                    strbuf_addf(&ir, "\t.zero 4\n"); // zero out 4 bytes
+                    strbuf_addf(&ir, "\t.zero %d\n", size * 4); // zero out size * 4 bytes
                 }
             } else {
                 tc_debug(0, "local variable %s, index %d\n", sym->name, sym->index);
-                if (node->var_declarator.expr) {
+                if (node->var_declarator.expr) { // initialize the variable
                     // for local variables, we support real expressions.
                     generate_asm(node->var_declarator.expr, symtab);
                     strbuf_addstr(&ir, "\tpopq %rax\n"); //get the value of the expression
@@ -275,14 +277,26 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         }
         break;
     case CAST_ASSIGN_STMT:
-        {
+        { // a[exp1] = [exp2]
             symbol_t *sym = symbol_table_lookup(symtab, node->assign_stmt.identifier, 1);
-            generate_asm(node->assign_stmt.expr, symtab);
+            if (node->expr.array_expr)
+                generate_asm(node->expr.array_expr, symtab); // exp1
+            generate_asm(node->assign_stmt.expr, symtab); // exp2
             strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop value of expression
-            if (sym->index == 0)
-                strbuf_addf(&ir, "\tmovl %%eax, %s(%%rip)\n", sym->name); // Store value in variable
-            else
-                strbuf_addf(&ir, "\tmovl %%eax, %d(%%rbp)\n", to_offset(sym->index)); // Store value in variable
+            if (sym->index == 0) {
+                if (node->expr.array_expr) {
+                    strbuf_addstr(&ir, "\tpopq %r11\n"); // Pop array index
+                    strbuf_addf(&ir, "\tleaq %s(%%rip), %%r10\n", sym->name); // Load address of array into %r10
+                    strbuf_addstr(&ir, "\tmovl %eax, (%r10,%r11,4)\n"); // Store value in array
+                } else
+                    strbuf_addf(&ir, "\tmovl %%eax, %s(%%rip)\n", sym->name); // Store value in variable
+            } else {
+                if (node->expr.array_expr) {
+                    strbuf_addstr(&ir, "\tpopq %r11\n"); // Pop array index
+                    strbuf_addf(&ir, "\tmovl %%eax, %d(%%rbp,%%r11,4)\n", to_offset(sym->index)); // Store value in array
+                } else
+                    strbuf_addf(&ir, "\tmovl %%eax, %d(%%rbp)\n", to_offset(sym->index)); // Store value in variable
+            }
         }
         break;
     case CAST_RETURN_STMT:
@@ -479,10 +493,24 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         {
             symbol_t *sym = symbol_table_lookup(symtab, node->expr.identifier, 1);
             // Load the value of the identifier into %rax
-            if (sym->index == 0)
-                strbuf_addf(&ir, "\tmovl %s(%%rip), %%eax\n", sym->name);
-            else
-                strbuf_addf(&ir, "\tmovl %d(%%rbp), %%eax\n", to_offset(sym->index));
+            if (sym->index == 0) { // Global variable
+                if (node->expr.array_expr) {
+                    generate_asm(node->expr.array_expr, symtab);
+                    strbuf_addstr(&ir, "\tpopq %rax\n"); // Pop array index
+                    strbuf_addf(&ir, "\tleaq %s(%%rip), %%r10\n", sym->name);
+                    strbuf_addf(&ir, "\tmovl (%r10,%rax,4), %%eax\n");
+                } else
+                    strbuf_addf(&ir, "\tmovl %s(%%rip), %%eax\n", sym->name);
+            } else { // Local variable
+                if (node->expr.array_expr) {
+                    generate_asm(node->expr.array_expr, symtab);
+                    strbuf_addstr(&ir, "\tpopq %r10\n"); // Pop array index
+                    // move array value into %eax
+                    strbuf_addf(&ir, "\tmovl %d(%%rbp,%%r10,4), %%eax\n", to_offset(sym->index));
+
+                } else
+                    strbuf_addf(&ir, "\tmovl %d(%%rbp), %%eax\n", to_offset(sym->index));
+            }
             strbuf_addstr(&ir, "\tpushq %rax\n"); // Push result onto stack
         }
         break;

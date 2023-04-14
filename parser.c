@@ -7,13 +7,13 @@
  * var-declaration = type-specifier var-declarator-list ";" ;
  * fun-declaration = type-specifier identifier "(" [ param-list ] ")" compound-stmt ;
  * var-declarator-list = var-declarator { "," var-declarator } ;
- * var-declarator = identifier [ "=" expression ] ;
+ * var-declarator = identifier [ "[" expression "]" | [ "=" expression ] ;
  * params-list = param { "," param } ;
  * param = type-specifier identifier;
- * type-specifier = "int" | "float" | "char" | "void" ;
+ * type-specifier = "int" | "void" ;
  * compound-stmt = "{" { var-declaration | statement } "}" ;
  * statement = assign-stmt | compound-stmt | if-stmt | while-stmt | return-stmt | call-stmt ;
- * assign-stmt = var-declarator "=" expression ";" ;
+ * assign-stmt = identifier [ "[" expression "]" ] "=" expression ";" ;
  * if-stmt = "if" "(" expression ")" statement [ "else" statement ] ;
  * while-stmt = "while" "(" expression ")" statement ;
  * return-stmt = "return" [ expression ] ";" ;
@@ -24,7 +24,7 @@
  * relational-expression = simple-expression [ ("<" | "<= " | ">" | ">=" | "!=" | "==") simple-expression ] ;
  * simple-expression = term { ("+" | "-") term } ;
  * term = factor { ("*" | "/" | "%") factor } ;
- * factor = identifier | num | "(" expression ")" | string  | call-expression ;
+ * factor = identifier[ "[" expression "]" ] | num | "(" expression ")" | string  | call-expression ;
  * string = '"' { character } '"' ;
  * identifier = letter { letter | digit } ;
  * letter = "a" | "b" | ... | "z" | "A" | "B" | ... | "Z" | "_" ;
@@ -64,9 +64,10 @@ static inline int possible_var_declarator(token_t *tok)
         return 0;
 
     next_tok = next_token(tok);
-    return next_tok->type == TOK_SEPARATOR_SEMICOLON || //;
-           next_tok->type == TOK_SEPARATOR_COMMA || //,
-           next_tok->type == TOK_OPERATOR_ASSIGN; //=
+    return next_tok->type == TOK_SEPARATOR_SEMICOLON ||  //;
+           next_tok->type == TOK_SEPARATOR_COMMA ||      //,
+           next_tok->type == TOK_OPERATOR_ASSIGN ||      //=
+           next_tok->type == TOK_SEPARATOR_LEFT_BRACKET; //[
 }
 
 static inline int possible_fun_declarator(token_t *tok)
@@ -79,7 +80,7 @@ static inline int possible_fun_declarator(token_t *tok)
     return next_tok->type == TOK_SEPARATOR_LEFT_PARENTHESIS; //(
 }
 
-// var-declarator = identifier [ "=" expression ];
+// var-declarator = identifier [ "[" num "]" | [ "=" expression ] ;
 static cast_node_t *parse_var_declarator(enum token_type type)
 {
     cast_node_t *n = zalloc(sizeof(cast_node_t));
@@ -91,10 +92,19 @@ static cast_node_t *parse_var_declarator(enum token_type type)
     n->var_declarator.identifier = strdup(current_tok->lexeme);
     n->var_declarator.type = type;
 
-    eat_current_tok();
+    eat_current_tok(); // eat identifier
     if (current_tok->type == TOK_OPERATOR_ASSIGN) {
         eat_current_tok(); // eat '='
         n->var_declarator.expr = parse_expr();
+    } else if (current_tok->type == TOK_SEPARATOR_LEFT_BRACKET) {
+        eat_current_tok(); // eat '['
+        if (current_tok->type != TOK_CONSTANT_INT)
+            panic("number expected, but got %s\n", current_tok->lexeme);
+        n->var_declarator.array_size = atoi(current_tok->lexeme);
+        eat_current_tok(); // eat number
+        if (current_tok->type != TOK_SEPARATOR_RIGHT_BRACKET)
+            panic("']' expected, but got %s\n", current_tok->lexeme);
+        eat_current_tok(); // eat ']'
     }
 
     return n;
@@ -176,7 +186,16 @@ static cast_node_t *parse_factor(void)
             n = zalloc(sizeof(cast_node_t));
             n->type = CAST_IDENTIFIER;
             n->expr.identifier = strdup(current_tok->lexeme);
-            eat_current_tok(); // eat identifier
+            if (ntok->type == TOK_SEPARATOR_LEFT_BRACKET) {
+                eat_current_tok(); // eat identifier
+                eat_current_tok(); // eat '['
+                n->expr.array_expr = parse_expr();
+                if (current_tok->type != TOK_SEPARATOR_RIGHT_BRACKET)
+                    panic("']' expected, but got %s\n", current_tok->lexeme);
+                eat_current_tok(); // eat ']'
+            } else {
+                eat_current_tok(); // eat identifier
+            }
         }
     } else if (current_tok->type == TOK_CONSTANT_INT) {
         n = zalloc(sizeof(cast_node_t));
@@ -312,7 +331,7 @@ static cast_node_t *parse_expr(void)
     return n;
 }
 
-// identifier = expr;
+// assgin_stmt = identifier [ "[" expression "]" ] "=" expression ;
 static cast_node_t *parse_assign_stmt(void)
 {
     cast_node_t *n = zalloc(sizeof(cast_node_t));
@@ -320,6 +339,14 @@ static cast_node_t *parse_assign_stmt(void)
     n->type = CAST_ASSIGN_STMT;
     n->assign_stmt.identifier = strdup(current_tok->lexeme);
     eat_current_tok(); // eat identifier
+
+    if (current_tok->type == TOK_SEPARATOR_LEFT_BRACKET) {
+        eat_current_tok(); // eat '['
+        n->assign_stmt.array_expr = parse_expr();
+        if (current_tok->type != TOK_SEPARATOR_RIGHT_BRACKET)
+            panic("']' expected, but got %s\n", current_tok->lexeme);
+        eat_current_tok(); // eat ']'
+    }
 
     if (current_tok->type != TOK_OPERATOR_ASSIGN)
         panic("'=' expected, but got %s\n", current_tok->lexeme);

@@ -6,7 +6,7 @@ static void generate_machine_code(char *code)
 	fprintf(fp, "%s", code);
 	fclose(fp);
 	system("gcc -o a.tc a.s");
-	remove("a.s");
+	//remove("a.s");
 }
 
 void optimize_code(struct strbuf *code)

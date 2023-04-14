@@ -82,7 +82,11 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             symbol_table_add(symtab, s);
             symbol_t *fun = symbol_table_lookup(symtab, symtab->name, 1);
             if (fun) { // local variable
-                fun->var_count++;
+                if (node->var_declarator.array_size)
+                    // FIXME: var_count is abused to plus array size
+                    fun->var_count = fun->var_count + node->var_declarator.array_size;
+                else
+                    fun->var_count++;
                 s->index = fun->arg_count + fun->var_count;
             }
             tc_debug(0, "Var Declarator: %s\n", node->var_declarator.identifier);
