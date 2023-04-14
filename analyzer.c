@@ -43,17 +43,6 @@ static void symbol_table_add(symbol_table_t *t, symbol_t *s)
     tc_debug(0, "<%s> %s, %s\n", t->name, token_type_to_str(s->type), s->name);
 }
 
-static void handle_var_declaration(cast_node_t *node, symbol_table_t *st)
-{
-    cast_node_t *var;
-    list_for_each_entry(var, &node->var_declaration.var_declarator_list->var_declarator_list.var_declarators, list) {
-        symbol_t *s = zalloc(sizeof(symbol_t));
-        s->name = strdup(var->var_declarator.identifier);
-        s->type = node->var_declaration.type;
-        symbol_table_add(st, s);
-    }
-}
-
 // Traverse CAST recursively in a depth-first manner
 static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
 {
@@ -76,7 +65,6 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_VAR_DECLARATION: {
-            handle_var_declaration(node, symtab);
             traverse_cast(node->var_declaration.var_declarator_list, symtab);
             break;
         }
@@ -88,7 +76,10 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             break;
         }
         case CAST_VAR_DECLARATOR: {
-            symbol_t *s = symbol_table_lookup(symtab, node->var_declarator.identifier, 0);
+            symbol_t *s = zalloc(sizeof(symbol_t));
+            s->name = strdup(node->var_declarator.identifier);
+            s->type = node->var_declarator.type;
+            symbol_table_add(symtab, s);
             symbol_t *fun = symbol_table_lookup(symtab, symtab->name, 1);
             if (fun) { // local variable
                 fun->var_count++;

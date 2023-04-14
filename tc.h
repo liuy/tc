@@ -183,6 +183,7 @@ typedef struct cast_node {
             struct list_head var_declarators;
         } var_declarator_list;
         struct {
+            enum token_type type;
             char *identifier;
             struct cast_node *expr;
         } var_declarator;

@@ -80,7 +80,7 @@ static inline int possible_fun_declarator(token_t *tok)
 }
 
 // var-declarator = identifier [ "=" expression ];
-static cast_node_t *parse_var_declarator(void)
+static cast_node_t *parse_var_declarator(enum token_type type)
 {
     cast_node_t *n = zalloc(sizeof(cast_node_t));
 
@@ -89,6 +89,7 @@ static cast_node_t *parse_var_declarator(void)
 
     n->type = CAST_VAR_DECLARATOR;
     n->var_declarator.identifier = strdup(current_tok->lexeme);
+    n->var_declarator.type = type;
 
     eat_current_tok();
     if (current_tok->type == TOK_OPERATOR_ASSIGN) {
@@ -100,16 +101,16 @@ static cast_node_t *parse_var_declarator(void)
 }
 
 // var-declarator-list = var-declarator { "," var-declarator } ;
-static cast_node_t *parse_var_declarator_list(void)
+static cast_node_t *parse_var_declarator_list(enum token_type type)
 {
     cast_node_t *n = zalloc(sizeof(cast_node_t));
 
     n->type = CAST_VAR_DECLARATOR_LIST;
     INIT_LIST_HEAD(&n->var_declarator_list.var_declarators);
-    list_add_tail(&parse_var_declarator()->list, &n->var_declarator_list.var_declarators);
+    list_add_tail(&parse_var_declarator(type)->list, &n->var_declarator_list.var_declarators);
     while (current_tok->type == TOK_SEPARATOR_COMMA) {
         eat_current_tok(); // eat ','
-        list_add_tail(&parse_var_declarator()->list, &n->var_declarator_list.var_declarators);
+        list_add_tail(&parse_var_declarator(type)->list, &n->var_declarator_list.var_declarators);
     }
     return n;
 }
@@ -122,7 +123,7 @@ static cast_node_t *parse_var_declaration(void)
     n->type = CAST_VAR_DECLARATION;
     n->var_declaration.type = current_tok->type;
     eat_current_tok(); // eat type-specifier
-    n->var_declaration.var_declarator_list = parse_var_declarator_list();
+    n->var_declaration.var_declarator_list = parse_var_declarator_list(current_tok->type);
     if (current_tok->type != TOK_SEPARATOR_SEMICOLON)
         panic("';' expected, but got %s\n", current_tok->lexeme);
     eat_current_tok(); // eat ";"
