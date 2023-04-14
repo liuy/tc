@@ -11,7 +11,7 @@ static void generate_machine_code(char *code)
 
 void optimize_code(struct strbuf *code)
 {
-    int pos;
+    int pos, start = 0;
     do { // remove useless paired pushq/popq with same %rax
         char *str = "\tpushq %rax\n\tpopq %rax\n";
         pos = strbuf_findstr(code, str);
@@ -31,10 +31,18 @@ void optimize_code(struct strbuf *code)
     } while (pos != -1);
     do {// merge double mov
         char *str = ", %eax\n\tmovl %eax";
-        pos = strbuf_findstr(code, str);
+        pos = strbuf_findstr_pos(code, str, start);
         if (pos != -1) {
-            tc_debug(0, "optimize[3] pos = %d\n", pos);
-            strbuf_remove(code, pos, strlen(str));
+            int ipos = pos;
+            while (!isspace(code->buf[ipos--]))
+                ; // skip first oprand of movl xxx, %eax
+            while (!isspace(code->buf[--ipos]))
+                ; // get the pos of instruction
+            if (strncmp(code->buf + ipos + 1, "mov", 3) == 0) {
+                tc_debug(0, "optimize[3] pos = %d\n", pos);
+                strbuf_remove(code, pos, strlen(str));
+            }
+            start = pos + strlen(str);
         }
     } while (pos != -1);
 	tc_debug(1, "\n%s", code->buf);

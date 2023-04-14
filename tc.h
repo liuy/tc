@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "list.h"
 
 enum token_type {
@@ -303,15 +304,20 @@ static inline void strbuf_release(struct strbuf *sb)
 	free(sb->buf);
 	memset(sb, 0, sizeof(*sb));
 }
-// get position of matched 'str' in 'buf'
-static inline int strbuf_findstr(struct strbuf *buf, const char *str)
+
+static inline int strbuf_findstr_pos(struct strbuf *buf, const char *str, int start)
 {
-    char *p = strstr(buf->buf, str);
+    char *p = strstr(buf->buf + start, str);
     if (p)
         return p - buf->buf;
     return -1;
 }
 
+// get position of matched 'str' in 'buf'
+static inline int strbuf_findstr(struct strbuf *buf, const char *str)
+{
+    return strbuf_findstr_pos(buf, str, 0);
+}
 
 // Optimization
 void optimize_code(struct strbuf *code);

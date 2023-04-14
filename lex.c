@@ -1,11 +1,6 @@
 #define _GNU_SOURCE // For strndup
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
 
 #include "tc.h"
-#include "list.h"
 
 // Parse separator and reutrn the length of the separator
 static size_t parse_separator(token_t *token, char *current_char)
