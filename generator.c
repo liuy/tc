@@ -372,19 +372,25 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         break;
     case CAST_IF_STMT:
         {
-            int else_label = label_count++;
+            int else_label;
             int end_label = label_count++;
             // Generate code for condition
             generate_asm(node->if_stmt.expr, symtab);
             strbuf_addstr(&ir, "\tpopq %rax\n");       // Pop condition value
             strbuf_addstr(&ir, "\ttest %rax, %rax\n"); // Test condition
             // Generate code for then branch
-            strbuf_addf(&ir, "\tje .L%d\n", else_label); // Jump to else branch if condition is false
+            if (node->if_stmt.else_stmt) {
+                else_label = label_count++;
+                strbuf_addf(&ir, "\tje .L%d\n", else_label); // Jump to else branch if condition is false
+            } else
+                strbuf_addf(&ir, "\tje .L%d\n", end_label); // Jump to end of if statement if else branch is not present
             generate_asm(node->if_stmt.if_stmt, symtab);
-            strbuf_addf(&ir, "\tjmp .L%d\n", end_label); // Jump to end of if statement
             // Generate code for else branch
-            strbuf_addf(&ir, ".L%d:\n", else_label);
-            generate_asm(node->if_stmt.else_stmt, symtab);
+            if (node->if_stmt.else_stmt) {
+                strbuf_addf(&ir, "\tjmp .L%d\n", end_label); // Jump to end of if statement
+                strbuf_addf(&ir, ".L%d:\n", else_label);
+                generate_asm(node->if_stmt.else_stmt, symtab);
+            }
             // Generate code for end of if statement
             strbuf_addf(&ir, ".L%d:\n", end_label);
         }
