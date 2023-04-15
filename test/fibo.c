@@ -1,8 +1,8 @@
+// Print 42 Fibonacci numbers
 int main()
 {
     int n = 42;
     int i = 1;
-    // print Fibonacci numbers within n
     while (i <= n) {
         i = i + 1;
         printf("%d ", fibonacci(i));

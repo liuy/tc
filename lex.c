@@ -380,7 +380,7 @@ struct list_head *lex(char *source_code)
 
     char *current_char = source_code;
 
-    tc_debug(1, "\n%s\n", source_code);
+    tc_debug(1, "The source code:\n%s\n", source_code);
     while (*current_char != '\0') {
         // Skip whitespace
         if (isspace(*current_char)) {

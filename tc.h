@@ -348,6 +348,9 @@ void debug_code();
     #define tc_debug(level, fmt, ...) \
     do { \
         if (level >= TC_DEBUG) { \
+            if (level == 1) \
+                fprintf(stdout, "[INFO] " fmt, __VA_ARGS__); \
+            else \
             fprintf(stderr, "[DEBUG] %s:%d %s(): " fmt, \
                     __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
         } \

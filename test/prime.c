@@ -1,8 +1,8 @@
+// Print prime numbers within 1000
 int main()
 {
     int count = 0;
     int num = 2;
-    // print prime numbers within 1000
     while (count < 1000) {
         if (is_prime(num)) {
             printf("%d ", num);

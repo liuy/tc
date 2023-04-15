@@ -1,4 +1,4 @@
-// compute the first 800 digits of pi
+// Compute the first 800 digits of pi
 int main()
 {
     int r[2801];

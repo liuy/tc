@@ -27,5 +27,5 @@ run:
 		echo "Please specify file in the $(LIST). E.g, make run file=prime.c"; \
 	else \
 		make clean;make debug=1;./tc test/$(file); \
-		echo "Program Output:";time ./a.tc; \
+		echo -e "Program Output:";head -n1 test/$(file);time ./a.tc; \
 	fi

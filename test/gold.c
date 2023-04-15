@@ -1,7 +1,7 @@
+// Goldbach Conjecture Equations
 int main()
 {
     int i = 4, j, found;
-    // Goldbach Conjecture Equations
     while (i <= 500) {
         j = 2;
         found = 0;

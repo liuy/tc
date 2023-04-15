@@ -1,6 +1,6 @@
+// Print twin primes less than 10000
 int main() {
     int i = 3;
-    // print twin primes less than 10000
     while (i < 10000) {
         if (is_prime(i) && is_prime(i + 2)) {
             printf("(%d, %d) ", i, i + 2);

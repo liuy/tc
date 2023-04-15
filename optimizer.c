@@ -6,7 +6,7 @@ static void generate_machine_code(char *code)
 	fprintf(fp, "%s", code);
 	fclose(fp);
 	system("gcc -o a.tc a.s");
-	//remove("a.s");
+	remove("a.s");
 }
 
 void optimize_code(struct strbuf *code)
@@ -48,6 +48,6 @@ forward:
             start = pos + strlen(str);
         }
     } while (pos != -1);
-	tc_debug(1, "\n%s", code->buf);
+	tc_debug(1, "The assembly code:\n%s", code->buf);
     generate_machine_code(code->buf);
 }
