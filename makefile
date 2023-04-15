@@ -10,11 +10,11 @@ LIST := $(patsubst test/%,%,$(shell find test -name '*.c' -not -name 'test_main.
 
 all: tc
 
-tc: tc.h list.h main.c lex.c parser.c analyzer.c generator.c optimizer.c
-	gcc $(CFLAGS) -o tc main.c lex.c parser.c analyzer.c generator.c optimizer.c
+tc: tc.h list.h main.c lexer.c parser.c analyzer.c generator.c optimizer.c
+	gcc $(CFLAGS) -o tc main.c lexer.c parser.c analyzer.c generator.c optimizer.c
 
-test_tc: test/test_main.c lex.c parser.c
-	gcc -o test/test_tc test/test_main.c lex.c parser.c $(CHECK_FLAGS)
+test_tc: test/test_main.c lexer.c parser.c
+	gcc -o test/test_tc test/test_main.c lexer.c parser.c $(CHECK_FLAGS)
 
 check: test_tc
 	test/test_tc
