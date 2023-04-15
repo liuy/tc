@@ -53,7 +53,7 @@ static void generate_machine_code(char *code, char *la)
     else
         sprintf(cmd, "gcc -o a.tc a.s");
     system(cmd);
-    //remove("a.s");
+    remove("a.s");
 }
 
 int main(int argc, char **argv)
