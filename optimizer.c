@@ -1,14 +1,5 @@
 #include "tc.h"
 
-static void generate_machine_code(char *code)
-{
-	FILE *fp = fopen("a.s", "w");
-	fprintf(fp, "%s", code);
-	fclose(fp);
-	system("gcc -o a.tc a.s");
-	remove("a.s");
-}
-
 void optimize_code(struct strbuf *code)
 {
     int pos, start = 0;
@@ -49,5 +40,4 @@ forward:
         }
     } while (pos != -1);
 	tc_debug(1, "The assembly code:\n%s", code->buf);
-    generate_machine_code(code->buf);
 }

@@ -42,19 +42,37 @@ static char *read_file(const char *filename)
     return buffer;
 }
 
+static void generate_machine_code(char *code, char *la)
+{
+    char cmd[1024];
+    FILE *fp = fopen("a.s", "w");
+    fprintf(fp, "%s", code);
+    fclose(fp);
+    if (la)
+        sprintf(cmd, "gcc -o a.tc a.s -l%s", la);
+    else
+        sprintf(cmd, "gcc -o a.tc a.s");
+    system(cmd);
+    //remove("a.s");
+}
+
 int main(int argc, char **argv)
 {
     char *source_code = NULL;
+    char *linker_arg = NULL;
     int opt, need_free = 0;
 
     // Parse command line options
-    while ((opt = getopt(argc, argv, "s:")) != -1) {
+    while ((opt = getopt(argc, argv, "s:l:")) != -1) {
         switch (opt) {
         case 's':
             source_code = optarg;
             break;
+        case 'l':
+            linker_arg = optarg;
+            break;
         default:
-            panic("Usage: %s [-s source_code] [input_file]\n", argv[0]);
+            panic("Usage: %s [-s source_code] [-l linker arg] [input_file]\n", argv[0]);
         }
     }
 
@@ -86,6 +104,7 @@ int main(int argc, char **argv)
     // Optimize code
     optimize_code(code);
 
+    generate_machine_code(code->buf, linker_arg);
     // Debug code
     //debug_code(code_generator, debug_info);
 
