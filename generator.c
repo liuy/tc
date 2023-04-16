@@ -424,27 +424,27 @@ static void generate_asm(cast_node_t *node, symbol_table_t *symtab)
         // Compare left and right operands
         switch (node->expr.op.type) {
         case TOK_OPERATOR_LESS_THAN:
-            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n"); // Compare left and right operands
+            strbuf_addstr(&ir, "\tcmpl %ecx, %eax\n"); // Compare left and right operands
             strbuf_addstr(&ir, "\tsetl %al\n"); // Set %al to 1 if left operand is less than right operand
             break;
         case TOK_OPERATOR_GREATER_THAN:
-            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tcmpl %ecx, %eax\n");
             strbuf_addstr(&ir, "\tsetg %al\n"); // Set %al to 1 if left operand is greater than right operand
             break;
         case TOK_OPERATOR_LESS_THAN_OR_EQUAL_TO:
-            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tcmpl %ecx, %eax\n");
             strbuf_addstr(&ir, "\tsetle %al\n"); // Set %al to 1 if left operand is less than or equal to right operand
             break;
         case TOK_OPERATOR_GREATER_THAN_OR_EQUAL_TO:
-            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tcmpl %ecx, %eax\n");
             strbuf_addstr(&ir, "\tsetge %al\n"); // Set %al to 1 if left operand is greater than or equal to right operand
             break;
         case TOK_OPERATOR_EQUAL:
-            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tcmpl %ecx, %eax\n");
             strbuf_addstr(&ir, "\tsete %al\n"); // Set %al to 1 if left operand is equal to right operand
             break;
         case TOK_OPERATOR_NOT_EQUAL:
-            strbuf_addstr(&ir, "\tcmpq %rcx, %rax\n");
+            strbuf_addstr(&ir, "\tcmpl %ecx, %eax\n");
             strbuf_addstr(&ir, "\tsetne %al\n"); // Set %al to 1 if left operand is not equal to right operand
             break;
         default:
