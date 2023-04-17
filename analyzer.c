@@ -81,7 +81,7 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             s->type = node->var_declarator.type;
             symbol_table_add(symtab, s);
             symbol_t *fun = symbol_table_lookup(symtab, symtab->name, 1);
-            if (fun) { // local variable
+            if (fun && fun->symbol_type) { // local variable
                 if (node->var_declarator.array_size)
                     // FIXME: var_count is abused to plus array size
                     fun->var_count = fun->var_count + node->var_declarator.array_size;
@@ -97,6 +97,7 @@ static void traverse_cast(cast_node_t *node, symbol_table_t *symtab)
             symbol_t *s = zalloc(sizeof(symbol_t));
             s->name = strdup(node->fun_declaration.identifier);
             s->type = node->fun_declaration.type;
+            s->symbol_type = 1; // function
             symbol_table_add(symtab, s); // add function name to global symbol table
             symbol_table_t *local = symbol_table_create(); // create a local symbol table
             node->fun_declaration.symbol_table = local;

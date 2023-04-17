@@ -110,6 +110,7 @@ typedef struct symbol {
     struct hlist_node list;
     char *name;
     enum token_type type;
+    int symbol_type;// variable[0], function[1], struct, enum, ...
     // variable specific
     int index; // for stack index, 0 means global
     // functioin specific
