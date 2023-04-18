@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This project is a toy compiler written in C. It was an attempt to learn AI-assisted programming, such as Github Copilot, and to find out how AI is useful in programming. The compiler is designed to compile a simple C-like programming language into GNU assembly code.
+This project is a toy compiler written in C. It was an attempt to learn AI-assisted programming, such as Github Copilot, and to find out how AI is useful in programming. The compiler is designed to compile a simple C-like programming language into GNU assembly code that runs on the x86-64 arch.
 
 ## Usage
 
@@ -10,7 +10,7 @@ This project is a toy compiler written in C. It was an attempt to learn AI-assis
 
 ```bash
 $ git clone git@github.com:liuy/tc.git
-or 
+or
 $ git clone https://github.com/liuy/tc.git
 ```
 
@@ -77,9 +77,9 @@ To keep it simple, we only support two options and a single file path
 
 ```bash
 Usage: ./tc [-s source_code] [-l linker arg] [input_file]
-**-s option:** as above suggested, accept a code stream in quotes
-**-l option:** is to pass the linker argument to gcc linker 'ld', by which we can call external functions in the shared library like glibc and others, e.g, ncurses that our two games need to do the console io.
-**input_file:** path to the file to be compiled.  
+-s option: as above suggested, accept a code stream in quotes
+-l option: is to pass the linker argument to gcc linker 'ld', by which we can call external functions in the shared library like glibc and others, e.g, ncurses that our two games need to do the console io.
+input_file: path to the file to be compiled.
 ```
 
 ## Language Syntax
@@ -124,4 +124,5 @@ The language supported by this compiler is a simple C-like language with the fol
 
 ## Limitations
 
-1. xxx
+1. no function type checking yet, that's why we don't need headers to call functions outside
+...
